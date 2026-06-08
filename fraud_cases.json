@@ -1,0 +1,38 @@
+[
+  {
+    "case_id": "FC001",
+    "reason": "Identity theft / Stolen credentials",
+    "phone": "+91 98765 43210",
+    "address": "123 Fraud Lane, Mumbai, India"
+  },
+  {
+    "case_id": "FC002",
+    "reason": "Forged bank statements & financial history",
+    "phone": "+55 11 98765-4321",
+    "address": "Avenida Paulista 1000, S\u00e3o Paulo, Brazil"
+  },
+  {
+    "case_id": "FC003",
+    "reason": "Defaulted on multiple identity-theft loans",
+    "phone": "+234 803 111 2222",
+    "address": "45 Alausa Way, Ikeja, Lagos, Nigeria"
+  },
+  {
+    "case_id": "FC004",
+    "reason": "Straw company setup / Shell corporation",
+    "phone": "+62 812-3456-7890",
+    "address": "Sudirman Kav 21, Jakarta, Indonesia"
+  },
+  {
+    "case_id": "FC005",
+    "reason": "Suspicious business registration mismatch",
+    "phone": "+91 91234 56789",
+    "address": "456 Fake St, Bangalore, India"
+  },
+  {
+    "case_id": "FC006",
+    "reason": "Multiple simultaneous applications under different names",
+    "phone": "+55 21 91234-5678",
+    "address": "Rua Copacabana 500, Rio de Janeiro, Brazil"
+  }
+]

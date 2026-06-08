@@ -1,0 +1,906 @@
+[
+  {
+    "business_name": "Bharat Industries Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Ipanema Industries Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L101",
+        "amount": 72800,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Gbagada Manufacturing Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L102",
+        "amount": 522199,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Bumi Industries PT",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Bharat Supermarket Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L104",
+        "amount": 1044399,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Brasil Retailers Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L105",
+        "amount": 335300,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Benue Supermarket Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L106",
+        "amount": 1361500,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Agung Retailers PT",
+    "previous_loans": [
+      {
+        "loan_id": "L107",
+        "amount": 847700,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Hind Carriers Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L108",
+        "amount": 872900,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Cruzeiro Shipping Ltda",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Gbagada Carriers Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Agung Logistics PT",
+    "previous_loans": [
+      {
+        "loan_id": "L111",
+        "amount": 39200,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Jyoti Software Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L112",
+        "amount": 319900,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Ipanema Tech Solutions Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L113",
+        "amount": 380100,
+        "decision": "Approved",
+        "repayment_status": "Defaulted"
+      }
+    ]
+  },
+  {
+    "business_name": "Hausa Tech Solutions Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L114",
+        "amount": 1285200,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Dunia Digital PT",
+    "previous_loans": [
+      {
+        "loan_id": "L115",
+        "amount": 357000,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Kalyan Manufacturing Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Estrela Productions Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L117",
+        "amount": 1192100,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Futa Productions Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L118",
+        "amount": 1078700,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Dunia Systems PT",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Jyoti Traders Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Delta Retailers Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L121",
+        "amount": 37800,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Hausa Mart Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L122",
+        "amount": 459899,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Agung Mart PT",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Kalyan Logistics Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L124",
+        "amount": 151900,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Estrela Transport Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L125",
+        "amount": 1366400,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Jesa Logistics Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L126",
+        "amount": 1295000,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Indo Express PT",
+    "previous_loans": [
+      {
+        "loan_id": "L127",
+        "amount": 227500,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Kalyan Software Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L128",
+        "amount": 1332800,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Estrela Tech Solutions Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L129",
+        "amount": 825300,
+        "decision": "Approved",
+        "repayment_status": "Defaulted"
+      }
+    ]
+  },
+  {
+    "business_name": "Calabar Labs Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Cipta Tech Solutions PT",
+    "previous_loans": [
+      {
+        "loan_id": "L131",
+        "amount": 990499,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Dravida Manufacturing Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L132",
+        "amount": 625100,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Brasil Productions Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L133",
+        "amount": 1174600,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Gbagada Factory Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L134",
+        "amount": 1243900,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Eka Manufacturing PT",
+    "previous_loans": [
+      {
+        "loan_id": "L135",
+        "amount": 484399,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Kalyan Retailers Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Fluminense Stores Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L137",
+        "amount": 465499,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Gbagada Mart Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Eka Mart PT",
+    "previous_loans": [
+      {
+        "loan_id": "L139",
+        "amount": 1003099,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Chola Logistics Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Delta Express Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L141",
+        "amount": 910700,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Jesa Transport Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L142",
+        "amount": 1268400,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Dunia Transport PT",
+    "previous_loans": [
+      {
+        "loan_id": "L143",
+        "amount": 700700,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Indus Labs Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L144",
+        "amount": 715400,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Ipanema Technologies Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L145",
+        "amount": 492799,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Gbagada Software Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Jaya Tech Solutions PT",
+    "previous_loans": [
+      {
+        "loan_id": "L147",
+        "amount": 1257900,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Elite Productions Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Jardim Systems Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L149",
+        "amount": 648900,
+        "decision": "Approved",
+        "repayment_status": "Defaulted"
+      }
+    ]
+  },
+  {
+    "business_name": "Duma Productions Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Garuda Factory PT",
+    "previous_loans": [
+      {
+        "loan_id": "L151",
+        "amount": 1154300,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Dravida Traders Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Fluminense Retailers Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L153",
+        "amount": 71400,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Gbagada Stores Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Jaya Traders PT",
+    "previous_loans": [
+      {
+        "loan_id": "L155",
+        "amount": 637000,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Indus Transport Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Gaucho Shipping Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L157",
+        "amount": 384300,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Futa Logistics Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L158",
+        "amount": 522899,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Indo Logistics PT",
+    "previous_loans": [
+      {
+        "loan_id": "L159",
+        "amount": 379400,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "AeroTech Tech Solutions Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Jardim Digital Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L161",
+        "amount": 685300,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Duma Digital Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L162",
+        "amount": 879900,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Bumi Software PT",
+    "previous_loans": [
+      {
+        "loan_id": "L163",
+        "amount": 100100,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Chola Productions Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L164",
+        "amount": 298900,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Brasil Industries Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L165",
+        "amount": 1197700,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Benue Systems Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L166",
+        "amount": 1337000,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Eka Systems PT",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Bharat Retailers Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L168",
+        "amount": 448000,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Delta Mart Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L169",
+        "amount": 248499,
+        "decision": "Approved",
+        "repayment_status": "Defaulted"
+      }
+    ]
+  },
+  {
+    "business_name": "Calabar Mart Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Bumi Stores PT",
+    "previous_loans": [
+      {
+        "loan_id": "L171",
+        "amount": 891800,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Elite Logistics Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L172",
+        "amount": 861000,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Ipanema Carriers Ltda",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Calabar Express Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L174",
+        "amount": 485799,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Indo Carriers PT",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Elite Technologies Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Brasil Software Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L177",
+        "amount": 426300,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Hausa Labs Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L178",
+        "amount": 430500,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Indo Digital PT",
+    "previous_loans": [
+      {
+        "loan_id": "L179",
+        "amount": 728700,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Indus Factory Pvt Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Gaucho Industries Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L181",
+        "amount": 87500,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Benue Productions Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L182",
+        "amount": 256199,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Fajar Systems PT",
+    "previous_loans": [
+      {
+        "loan_id": "L183",
+        "amount": 933099,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Dravida Mart Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L184",
+        "amount": 178500,
+        "decision": "Approved",
+        "repayment_status": "Defaulted"
+      }
+    ]
+  },
+  {
+    "business_name": "Alfa Mart Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L185",
+        "amount": 1171100,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Gbagada Supermarket Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L186",
+        "amount": 990499,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Indo Retailers PT",
+    "previous_loans": [
+      {
+        "loan_id": "L187",
+        "amount": 467599,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Dravida Carriers Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L188",
+        "amount": 978599,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Horizonte Express Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L189",
+        "amount": 1006599,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Afri Express Ltd",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Eka Express PT",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Indus Digital Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L192",
+        "amount": 358400,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Ipanema Digital Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L193",
+        "amount": 998899,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  },
+  {
+    "business_name": "Futa Tech Solutions Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L194",
+        "amount": 352100,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Eka Technologies PT",
+    "previous_loans": []
+  },
+  {
+    "business_name": "Ganga Systems Pvt Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L196",
+        "amount": 1229900,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Alfa Factory Ltda",
+    "previous_loans": [
+      {
+        "loan_id": "L197",
+        "amount": 561400,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Afri Productions Ltd",
+    "previous_loans": [
+      {
+        "loan_id": "L198",
+        "amount": 890400,
+        "decision": "Rejected",
+        "repayment_status": "N/A"
+      }
+    ]
+  },
+  {
+    "business_name": "Dunia Manufacturing PT",
+    "previous_loans": [
+      {
+        "loan_id": "L199",
+        "amount": 246399,
+        "decision": "Approved",
+        "repayment_status": "Completed"
+      }
+    ]
+  }
+]
