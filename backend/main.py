@@ -1,9 +1,13 @@
 import os
+import sys
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any
+
+# Ensure project root is in sys.path for Vercel deployment and local runs
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import schemas and orchestrator
 from backend.schemas import LoanAnalysisInput, LoanAnalysisResponse

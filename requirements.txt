@@ -7,3 +7,5 @@ google-adk==2.1.0
 google-genai==1.75.0
 mcp==1.27.2
 python-multipart==0.0.31
+python-dotenv==1.0.1
+
