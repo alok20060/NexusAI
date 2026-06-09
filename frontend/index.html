@@ -578,7 +578,7 @@ const PipelineView=({stage,form,startTime})=>{
 };
 
 // ─── SIDEBAR ─────────────────────────────────────────────────────────────────
-const Sidebar=({active,onNav,screen})=>{
+const Sidebar=({active,onNav,screen,isConnected})=>{
   // Only 4 real, implemented nav items
   const mainItems=[
     {id:'dashboard',icon:'dashboard',label:'Dashboard',desc:'Overview & assessment'},
@@ -589,10 +589,10 @@ const Sidebar=({active,onNav,screen})=>{
     {id:'about',icon:'info',label:'About BankGuard',desc:'Platform information'},
   ];
   const statusRows=[
-    {dot:'#10B981',label:'SYSTEM ONLINE',sub:null,pulse:true},
-    {dot:'#10B981',label:'MongoDB Connected',sub:null},
-    {dot:'#3B82F6',label:'MCP Active',sub:null},
-    {dot:'#818CF8',label:'5 Agents Ready',sub:null},
+    {dot:isConnected?'#10B981':'#EF4444',label:isConnected?'SYSTEM ONLINE':'SYSTEM OFFLINE',sub:null,pulse:!!isConnected},
+    {dot:isConnected?'#10B981':'#EF4444',label:isConnected?'MongoDB Connected':'MongoDB Disconnected',sub:null},
+    {dot:isConnected?'#3B82F6':'#6B7280',label:isConnected?'MCP Active':'MCP Inactive',sub:null},
+    {dot:isConnected?'#818CF8':'#6B7280',label:isConnected?'5 Agents Ready':'Agents Offline',sub:null},
   ];
   const NavItem=({item})=>React.createElement('div',{
     className:`sidebar-item ${active===item.id?'active':''}`,
@@ -659,7 +659,7 @@ const TopBar=({isConnected})=>{
     // Connection status
     React.createElement('div',{style:{display:'flex',alignItems:'center',gap:6,padding:'6px 14px',borderRadius:10,background:isConnected?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)',border:`1px solid ${isConnected?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`}},
       React.createElement('div',{style:{width:7,height:7,borderRadius:'50%',background:isConnected?'#10B981':'#EF4444',boxShadow:`0 0 6px ${isConnected?'#10B981':'#EF4444'}`}}),
-      React.createElement('span',{style:{fontSize:11,fontWeight:600,color:isConnected?'#34D399':'#FCA5A5',letterSpacing:'0.06em'}},isConnected?'CONNECTED':'OFFLINE')
+      React.createElement('span',{style:{fontSize:11,fontWeight:600,color:isConnected?'#34D399':'#FCA5A5',letterSpacing:'0.06em'}},isConnected?'ONLINE':'OFFLINE')
     ),
     React.createElement('button',{style:{width:36,height:36,borderRadius:10,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},
       React.createElement(Icon,{name:'bell',size:15,color:'rgba(255,255,255,0.4)'})
@@ -681,7 +681,18 @@ const App=()=>{
 
   // Connection check
   useEffect(()=>{
-    fetch(BACKEND+'/').then(r=>{setIsConnected(r.ok);}).catch(()=>setIsConnected(false));
+    fetch(BACKEND+'/health')
+      .then(r=>{
+        if(!r.ok) throw new Error('Response status: '+r.status);
+        return r.json();
+      })
+      .then(data=>{
+        setIsConnected(data.status==='online');
+      })
+      .catch(err=>{
+        console.error('Connection check failed:', err);
+        setIsConnected(false);
+      });
   },[]);
 
   const handleSubmit=async(form)=>{
@@ -738,7 +749,7 @@ const App=()=>{
 
   return React.createElement('div',{style:{display:'flex',minHeight:'100vh',background:'#070B1F'}},
     // Sidebar
-    React.createElement(Sidebar,{active:nav,onNav:handleNav,screen}),
+    React.createElement(Sidebar,{active:nav,onNav:handleNav,screen,isConnected}),
     // Main content
     React.createElement('div',{style:{flex:1,display:'flex',flexDirection:'column',minHeight:'100vh',overflow:'auto'}},
       React.createElement(TopBar,{isConnected}),

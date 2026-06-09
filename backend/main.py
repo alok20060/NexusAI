@@ -110,6 +110,13 @@ async def analyze_loan(payload: LoanAnalysisInput):
         logger.error(f"Error executing loan analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal multi-agent system failure: {str(e)}")
 
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint returning system status.
+    """
+    return {"status": "online"}
+
 @app.get("/")
 async def get_frontend():
     """
