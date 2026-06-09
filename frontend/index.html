@@ -273,6 +273,25 @@ const AgentTimeline=({stage,results})=>
     })
   );
 
+// ─── FORM COMPONENT HELPERS ──────────────────────────────────────────────────
+const Field=({label,placeholder,type='text',half=false,value,onChange,error})=>
+  React.createElement('div',{style:{gridColumn:half?'span 1':'span 2'}},
+    React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6,letterSpacing:'0.04em'}},label),
+    React.createElement('input',{className:`input-field ${error?'border-rose-500':''}`,type,placeholder,
+      value:value||'',onChange,
+      style:error?{borderColor:'rgba(239,68,68,0.5)',boxShadow:'0 0 0 3px rgba(239,68,68,0.1)'}:{}}),
+    error&&React.createElement('p',{style:{fontSize:11,color:'#FCA5A5',marginTop:4}},error)
+  );
+
+const Select=({label,options,value,onChange})=>
+  React.createElement('div',null,
+    React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6,letterSpacing:'0.04em'}},label),
+    React.createElement('select',{className:'input-field',value:value||'',onChange},
+      React.createElement('option',{value:''},'Select...'),
+      options.map(o=>React.createElement('option',{key:o,value:o},o))
+    )
+  );
+
 // ─── FORM COMPONENT ──────────────────────────────────────────────────────────
 const LoanForm=({onSubmit,loading})=>{
   const [form,setForm]=useState({biz:'',owner:'',amount:'',revenue:'',industry:'',purpose:''});
@@ -295,22 +314,7 @@ const LoanForm=({onSubmit,loading})=>{
   };
   const submit=()=>{if(validate())onSubmit(form);};
   const fmt=n=>n?'₹'+Number(n).toLocaleString('en-IN'):'';
-  const Field=({label,id,placeholder,type='text',half=false})=>
-    React.createElement('div',{style:{gridColumn:half?'span 1':'span 2'}},
-      React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6,letterSpacing:'0.04em'}},label),
-      React.createElement('input',{className:`input-field ${errors[id]?'border-rose-500':''}`,type,placeholder,
-        value:form[id]||'',onChange:upd(id),
-        style:errors[id]?{borderColor:'rgba(239,68,68,0.5)',boxShadow:'0 0 0 3px rgba(239,68,68,0.1)'}:{}}),
-      errors[id]&&React.createElement('p',{style:{fontSize:11,color:'#FCA5A5',marginTop:4}},errors[id])
-    );
-  const Select=({label,id,options})=>
-    React.createElement('div',null,
-      React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6,letterSpacing:'0.04em'}},label),
-      React.createElement('select',{className:'input-field',value:form[id]||'',onChange:upd(id)},
-        React.createElement('option',{value:''},'Select...'),
-        options.map(o=>React.createElement('option',{key:o,value:o},o))
-      )
-    );
+
   return React.createElement('div',null,
     // Demo toggle
     React.createElement('div',{style:{marginBottom:24}},
@@ -337,10 +341,10 @@ const LoanForm=({onSubmit,loading})=>{
     ),
     // Form grid
     React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:24}},
-      React.createElement(Field,{label:'Business Entity Name',id:'biz',placeholder:'e.g. ABC Traders Pvt Ltd',half:false}),
-      React.createElement(Field,{label:'Owner / Promoter',id:'owner',placeholder:'Full name',half:false}),
-      React.createElement(Field,{label:'Loan Amount (₹)',id:'amount',placeholder:'e.g. 500000',type:'number',half:true}),
-      React.createElement(Field,{label:'Monthly Revenue (₹)',id:'revenue',placeholder:'e.g. 200000',type:'number',half:true}),
+      React.createElement(Field,{label:'Business Entity Name',placeholder:'e.g. ABC Traders Pvt Ltd',half:false,value:form.biz,onChange:upd('biz'),error:errors.biz}),
+      React.createElement(Field,{label:'Owner / Promoter',placeholder:'Full name',half:false,value:form.owner,onChange:upd('owner'),error:errors.owner}),
+      React.createElement(Field,{label:'Loan Amount (₹)',placeholder:'e.g. 500000',type:'number',half:true,value:form.amount,onChange:upd('amount'),error:errors.amount}),
+      React.createElement(Field,{label:'Monthly Revenue (₹)',placeholder:'e.g. 200000',type:'number',half:true,value:form.revenue,onChange:upd('revenue'),error:errors.revenue}),
       React.createElement('div',null,
         React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6}}, 'Industry Sector'),
         React.createElement('select',{className:'input-field',value:form.industry||'',onChange:upd('industry')},
