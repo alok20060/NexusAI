@@ -219,9 +219,10 @@ class BankGuardOrchestrator:
             }
         
         elif agent_name == "bankguard_fraud_intelligence_agent":
+            owner_val = str(app_data.get("owner_name", ""))
             # For testing decision rules, we can check for specific mock inputs
             fraud_risk = "Low"
-            if "high fraud" in biz_name.lower():
+            if "high fraud" in biz_name.lower() or biz_name.lower() == "fake corp ltd" or owner_val.lower() == "fraud user":
                 fraud_risk = "High"
             return {
                 "fraud_risk_level": fraud_risk,

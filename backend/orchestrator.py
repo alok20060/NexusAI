@@ -343,9 +343,11 @@ class BankGuardOrchestrator:
                     f"Matched fraud_cases record — business: '{biz_name}', owner: '{owner_val}'"
                 ]
             else:
-                # Legacy keyword / phone-number fallback
+                # Legacy keyword / phone-number/name fallback
                 fraud_risk = "Low"
                 if "high fraud" in biz_name.lower() \
+                   or biz_name.lower() == "fake corp ltd" \
+                   or owner_val.lower() == "fraud user" \
                    or owner_val in ("+91 98765 43210", "+55 11 98765-4321",
                                     "+234 803 111 2222", "+62 812-3456-7890"):
                     fraud_risk = "High"
