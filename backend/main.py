@@ -111,10 +111,7 @@ async def analyze_loan(payload: LoanAnalysisInput):
         raise HTTPException(status_code=500, detail=f"Internal multi-agent system failure: {str(e)}")
 
 @app.get("/health")
-async def health_check():
-    """
-    Health check endpoint returning system status.
-    """
+def health():
     return {"status": "online"}
 
 @app.get("/")

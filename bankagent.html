@@ -347,7 +347,9 @@ let isConnected=null;
 
 
 const $=id=>document.getElementById(id);
-const BACKEND_URL='http://127.0.0.1:8006';
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+  ? 'http://127.0.0.1:8006' 
+  : window.location.origin;
 const genRef=()=>'BG-'+Date.now().toString(36).toUpperCase().slice(-6)+'-'+Math.floor(Math.random()*9000+1000);
 const fmt=n=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
 const fmtT=ms=>(ms/1000).toFixed(1)+'s';
@@ -830,13 +832,18 @@ function render(){
 }
 
 function checkBackendConnection() {
-  fetch(`${BACKEND_URL}/`)
+  fetch(`${BACKEND_URL}/health`)
     .then(res => {
-      isConnected = res.ok;
+      if(!res.ok) throw new Error('Response status: '+res.status);
+      return res.json();
+    })
+    .then(data => {
+      isConnected = data.status === 'online';
       render();
       console.log('[BankGuard] Frontend is currently CONNECTED to the backend at ' + BACKEND_URL);
     })
     .catch(err => {
+      console.error('Connection check failed:', err);
       isConnected = false;
       render();
       console.warn('[BankGuard] Frontend is currently running STANDALONE (Backend disconnected at ' + BACKEND_URL + ')');
