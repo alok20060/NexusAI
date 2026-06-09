@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BankGuard — Neural Credit System</title>
+<title>NexusAI-BankGuard — Neural Credit System</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -350,7 +350,7 @@ const $=id=>document.getElementById(id);
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
   ? 'http://127.0.0.1:8006' 
   : window.location.origin;
-const genRef=()=>'BG-'+Date.now().toString(36).toUpperCase().slice(-6)+'-'+Math.floor(Math.random()*9000+1000);
+const genRef=()=>'NBG-'+Date.now().toString(36).toUpperCase().slice(-6)+'-'+Math.floor(Math.random()*9000+1000);
 const fmt=n=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
 const fmtT=ms=>(ms/1000).toFixed(1)+'s';
 const ts=()=>new Date().toLocaleTimeString('en-US',{hour12:false});
@@ -388,7 +388,7 @@ function startPipeline(){
     industry: S.form.industry || 'General Trade',
     loan_purpose: S.form.purpose || 'Working capital'
   };
-  console.log('[BankGuard] Request payload', payload);
+  console.log('[NexusAI-BankGuard] Request payload', payload);
 
   eTimer=setInterval(()=>{
     S.elapsed=Date.now()-S.start;
@@ -415,12 +415,12 @@ function startPipeline(){
     return res.json();
   })
   .then(data => {
-    console.log('[BankGuard] API response', data);
+    console.log('[NexusAI-BankGuard] API response', data);
     apiData = data;
     log('Backend analysis payload received');
   })
   .catch(err => {
-    console.error('[BankGuard] API error', err);
+    console.error('[NexusAI-BankGuard] API error', err);
     handleApiError(err.message || 'Unknown backend error');
   });
 
@@ -472,7 +472,7 @@ function checkAndFinish(){
   }
   if (apiError) {
     clearInterval(eTimer);
-    console.warn('[BankGuard] Stopped pipeline due to backend error');
+    console.warn('[NexusAI-BankGuard] Stopped pipeline due to backend error');
     return;
   }
   setTimeout(checkAndFinish, 500);
@@ -507,7 +507,7 @@ function finishWithData(data){
     next_action: final_resp.next_action || ''
   };
   
-  console.log('[BankGuard] Final decision rendered:', S.decision);
+  console.log('[NexusAI-BankGuard] Final decision rendered:', S.decision);
   
   S.audit = Array.isArray(final_resp.audit_log) ? final_resp.audit_log.map(item => ({ t: item.timestamp, m: item.message })) : [];
   
@@ -522,7 +522,7 @@ function finishWithData(data){
 
 function dlReceipt(){
   const f=S.form,d=S.decision;
-  const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>BankGuard Sanction</title>
+  const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>NexusAI-NexusAI-BankGuard Sanction</title>
 <style>body{font-family:'Courier New',monospace;background:#050810;color:#C8D8F0;max-width:700px;margin:40px auto;padding:40px;border:1px solid #00F5FF}
 h1{font-size:22px;color:#00F5FF;letter-spacing:0.15em;font-family:sans-serif;text-transform:uppercase}
 .sub{font-size:9px;color:#3A5278;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:30px}
@@ -534,7 +534,7 @@ td{padding:9px 0;border-bottom:1px solid rgba(0,245,255,0.1);font-size:11px}
 td:first-child{color:#3A5278;width:42%;letter-spacing:0.08em}
 .footer{margin-top:28px;font-size:9px;color:#3A5278;text-align:center;border-top:1px solid rgba(0,245,255,0.15);padding-top:14px;letter-spacing:0.1em}
 </style></head><body>
-<h1>⬡ BankGuard</h1><div class="sub">Neural Credit System · Official Sanction Document</div>
+<h1>⬡ NexusAI-BankGuard</h1><div class="sub">Neural Credit System · Official Sanction Document</div>
 <div class="badge"><h2>✓ LOAN SANCTIONED</h2><div class="amount">${fmt(f.amount)}</div></div>
 <table>
 <tr><td>REFERENCE ID</td><td>${S.ref}</td></tr>
@@ -551,18 +551,18 @@ td:first-child{color:#3A5278;width:42%;letter-spacing:0.08em}
 <tr><td>DISBURSEMENT</td><td>T+1 BUSINESS DAY</td></tr>
 <tr><td>LOAN PURPOSE</td><td>${f.purpose||'Working capital'}</td></tr>
 </table>
-<div class="footer">BANKGUARD NEURAL CREDIT SYSTEM · ${S.ref}<br/>SYSTEM-GENERATED · RBI FAIR PRACTICES CODE COMPLIANT<br/>FULL COMPLIANCE AUDIT TRAIL ATTACHED</div>
+<div class="footer">NEXUSAI-NEXUSAI-BANKGUARD NEURAL CREDIT SYSTEM · ${S.ref}<br/>SYSTEM-GENERATED · RBI FAIR PRACTICES CODE COMPLIANT<br/>FULL COMPLIANCE AUDIT TRAIL ATTACHED</div>
 </body></html>`;
   const blob=new Blob([h],{type:'text/html'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='BankGuard_Sanction_'+S.ref+'.html';a.click();
+  a.download='NexusAI-NexusAI-BankGuard_Sanction_'+S.ref+'.html';a.click();
   toast('SANCTION DOCUMENT DOWNLOADED');
 }
 
 function dlAudit(){
   const lines=S.audit.map(l=>'['+l.t+'] '+l.m).join('
 ');
-  const hdr='BANKGUARD NEURAL CREDIT SYSTEM
+  const hdr='NEXUSAI-NEXUSAI-BANKGUARD NEURAL CREDIT SYSTEM
 COMPLIANCE AUDIT LOG
 APPLICATION: '+S.ref+'
 GENERATED: '+new Date().toISOString()+'
@@ -571,7 +571,7 @@ GENERATED: '+new Date().toISOString()+'
 ';
   const blob=new Blob([hdr+lines],{type:'text/plain'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='BankGuard_AuditLog_'+S.ref+'.txt';a.click();
+  a.download='NexusAI-NexusAI-BankGuard_AuditLog_'+S.ref+'.txt';a.click();
   toast('AUDIT LOG EXPORTED');
 }
 
@@ -599,11 +599,11 @@ function renderHeader(){
         <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
           <polygon points="19,2 35,11 35,27 19,36 3,27 3,11" stroke="#00F5FF" stroke-width="1.2" fill="rgba(0,245,255,0.04)"/>
           <polygon points="19,8 29,14 29,24 19,30 9,24 9,14" stroke="#00F5FF" stroke-width="0.6" fill="rgba(0,245,255,0.06)" opacity="0.5"/>
-          <text x="19" y="23" text-anchor="middle" font-family="Orbitron,sans-serif" font-size="9" fill="#00F5FF" font-weight="700">BG</text>
+          <text x="19" y="23" text-anchor="middle" font-family="Orbitron,sans-serif" font-size="9" fill="#00F5FF" font-weight="700">NBG</text>
         </svg>
       </div>
       <div>
-        <div class="logo-name">BankGuard</div>
+        <div class="logo-name">NexusAI-BankGuard</div>
         <div class="logo-tagline">NEURAL CREDIT SYSTEM · v2.4</div>
       </div>
     </div>
@@ -778,7 +778,7 @@ function renderReceipt(){
       <div class="receipt-body">
         <div class="receipt-hdr">
           <div>
-            <div class="receipt-logo-txt">⬡ BANKGUARD</div>
+            <div class="receipt-logo-txt">⬡ NEXUSAI-BANKGUARD</div>
             <div class="receipt-doc-type">OFFICIAL SANCTION DOCUMENT · NEURAL CREDIT SYSTEM</div>
           </div>
           <div class="receipt-ref">
@@ -809,7 +809,7 @@ function renderReceipt(){
         </table>
         <div class="receipt-footer">
           <div class="stamp">✓ APPROVED & SANCTIONED</div>
-          <div class="receipt-legal">BANKGUARD NEURAL CREDIT SYSTEM<br/>RBI FAIR PRACTICES CODE COMPLIANT<br/>${S.ref}</div>
+          <div class="receipt-legal">NEXUSAI-NEXUSAI-BANKGUARD NEURAL CREDIT SYSTEM<br/>RBI FAIR PRACTICES CODE COMPLIANT<br/>${S.ref}</div>
         </div>
       </div>
     </div>
@@ -840,13 +840,13 @@ function checkBackendConnection() {
     .then(data => {
       isConnected = data.status === 'online';
       render();
-      console.log('[BankGuard] Frontend is currently CONNECTED to the backend at ' + BACKEND_URL);
+      console.log('[NexusAI-BankGuard] Frontend is currently CONNECTED to the backend at ' + BACKEND_URL);
     })
     .catch(err => {
       console.error('Connection check failed:', err);
       isConnected = false;
       render();
-      console.warn('[BankGuard] Frontend is currently running STANDALONE (Backend disconnected at ' + BACKEND_URL + ')');
+      console.warn('[NexusAI-BankGuard] Frontend is currently running STANDALONE (Backend disconnected at ' + BACKEND_URL + ')');
     });
 }
 

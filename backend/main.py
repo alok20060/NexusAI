@@ -15,9 +15,9 @@ from backend.orchestrator import BankGuardOrchestrator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("BankGuardAPI")
+logger = logging.getLogger("NexusAI-BankGuardAPI")
 
-app = FastAPI(title="BankGuard Neural Credit API", version="2.4")
+app = FastAPI(title="NexusAI-BankGuard Neural Credit API", version="2.4")
 
 # Configure CORS middleware
 app.add_middleware(
@@ -65,7 +65,7 @@ async def analyze_loan(payload: LoanAnalysisInput):
             "next_action": result["next_action"],
             
             # Dynamic and audit UI variables
-            "reference_id": result["audit_log"][0].message.split("business:")[0].split("application ")[-1].strip() if "application" in result["audit_log"][0].message else f"BG-{os.urandom(3).hex().upper()}",
+            "reference_id": result["audit_log"][0].message.split("business:")[0].split("application ")[-1].strip() if "application" in result["audit_log"][0].message else f"NBG-{os.urandom(3).hex().upper()}",
             "risk_score": result["risk_score"],
             "fraud_score": result["fraud_score"],
             "loan_to_revenue_ratio": round(payload.loan_amount / payload.monthly_revenue, 2) if payload.monthly_revenue > 0 else 0.0,
@@ -78,11 +78,11 @@ async def analyze_loan(payload: LoanAnalysisInput):
         if not final_resp["reference_id"] or "Application" in final_resp["reference_id"]:
             # extract code like BG-XXXX-XXXX
             words = result["audit_log"][0].message.split()
-            ref_word = [w for w in words if w.startswith("BG-")]
+            ref_word = [w for w in words if w.startswith("NBG-")]
             if ref_word:
                 final_resp["reference_id"] = ref_word[0]
             else:
-                final_resp["reference_id"] = f"BG-{os.urandom(3).hex().upper()}"
+                final_resp["reference_id"] = f"NBG-{os.urandom(3).hex().upper()}"
 
         logger.info(f"Completed loan request processing for business: {payload.business_name} with decision: {result['final_recommendation']}")
         
@@ -117,7 +117,7 @@ def health():
 @app.get("/")
 async def get_frontend():
     """
-    Serves the BankGuard interactive credit analysis tool index page.
+    Serves the NexusAI-BankGuard interactive credit analysis tool index page.
     """
     frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "index.html")
     if os.path.exists(frontend_path):
@@ -127,4 +127,4 @@ async def get_frontend():
         fallback_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bankagent.html")
         if os.path.exists(fallback_path):
             return FileResponse(fallback_path)
-        raise HTTPException(status_code=404, detail="BankGuard frontend interface not found.")
+        raise HTTPException(status_code=404, detail="NexusAI-BankGuard frontend interface not found.")

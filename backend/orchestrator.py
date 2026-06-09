@@ -36,7 +36,7 @@ class BankGuardOrchestrator:
     """
     def __init__(self, mock_mode: bool = False):
         self.mock_mode = mock_mode or (os.getenv("MOCK_AGENTS", "false").lower() == "true")
-        self.logger = logging.getLogger("BankGuardOrchestrator")
+        self.logger = logging.getLogger("NexusAI-BankGuardOrchestrator")
         
         # MongoDB connection settings for storing results
         self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")

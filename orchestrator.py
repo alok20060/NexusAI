@@ -25,7 +25,7 @@ except ImportError:
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("BankGuardOrchestrator")
+logger = logging.getLogger("NexusAI-BankGuardOrchestrator")
 
 class FinalDecisionOutput(BaseModel):
     final_recommendation: str = Field(description="Final decision: 'Approve', 'Manual Review', 'Reject', or 'Additional Verification'")
@@ -45,7 +45,7 @@ class BankGuardOrchestrator:
     """
     def __init__(self, mock_mode: bool = False):
         self.mock_mode = mock_mode or (os.getenv("MOCK_AGENTS", "false").lower() == "true")
-        self.logger = logging.getLogger("BankGuardOrchestrator")
+        self.logger = logging.getLogger("NexusAI-BankGuardOrchestrator")
 
     async def run(self, application: dict) -> FinalDecisionOutput:
         """
@@ -253,7 +253,11 @@ class BankGuardOrchestrator:
             ratio = loan_amount / monthly_revenue if monthly_revenue > 0 else 0.0
             
             # Risk Scoring Agent Rules
-            if ratio > 100:
+            if "high risk" in biz_name.lower():
+                repayment_risk = "High"
+                risk_score = 85
+                recommendation = "Manual Review"
+            elif ratio > 100:
                 repayment_risk = "High"
                 risk_score = 95
                 recommendation = "Reject"
@@ -396,6 +400,12 @@ class BankGuardOrchestrator:
                     pass
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.85
 
+        is_approved = final_rec.upper() == "APPROVE"
+        reasons_text = "\n".join([f"* {r}" for r in reasons])
+        confidence_pct = int(round(avg_confidence * 100))
+        dec_label = "APPROVED" if is_approved else ("REJECTED" if final_rec.upper() == "REJECT" else "PENDING MANUAL REVIEW")
+        explanation_str = f"Decision: {dec_label}\n\nReasons:\n{reasons_text}\n\nConfidence: {confidence_pct}%"
+
         decision_data = {
             "final_recommendation": final_rec,
             "fraud_risk": fraud_risk,
@@ -403,7 +413,8 @@ class BankGuardOrchestrator:
             "repayment_risk": repayment_risk,
             "key_reasons": reasons,
             "next_action": next_action,
-            "confidence": round(avg_confidence, 2)
+            "confidence": round(avg_confidence, 2),
+            "decision_explanation": explanation_str
         }
 
         # Print auditable report

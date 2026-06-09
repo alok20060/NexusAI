@@ -451,8 +451,8 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
       ),
       React.createElement('button',{className:'btn-secondary',style:{display:'flex',alignItems:'center',gap:6},onClick:()=>{
         const lines=(fr.audit_log||[]).map(l=>`[${l.timestamp}] ${l.message}`).join('\n');
-        const blob=new Blob([`BANKGUARD AUDIT LOG\nREF: ${fr.reference_id}\n\n${lines}`],{type:'text/plain'});
-        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`BankGuard_${fr.reference_id}.txt`;a.click();
+        const blob=new Blob([`NEXUSAI-NEXUSAI-BANKGUARD AUDIT LOG\nREF: ${fr.reference_id}\n\n${lines}`],{type:'text/plain'});
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`NexusAI-NexusAI-BankGuard_${fr.reference_id}.txt`;a.click();
       }},React.createElement(Icon,{name:'download',size:13,color:'currentColor'}),'Export Audit Log')
     )
   );
@@ -491,7 +491,7 @@ const Sidebar=({active,onNav,screen,isConnected})=>{
   ];
   const extraItems=[
     {id:'demo',icon:'play',label:'Demo Cases',desc:'Preloaded hackathon demos'},
-    {id:'about',icon:'info',label:'About BankGuard',desc:'Platform information'},
+    {id:'about',icon:'info',label:'About NexusAI-BankGuard',desc:'Platform information'},
   ];
   const statusRows=[
     {dot:isConnected?'#10B981':'#EF4444',label:isConnected?'SYSTEM ONLINE':'SYSTEM OFFLINE',sub:null,pulse:!!isConnected},
@@ -513,10 +513,10 @@ const Sidebar=({active,onNav,screen,isConnected})=>{
     // ── Logo ──────────────────────────────────────────────────────────────
     React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12,padding:'4px 8px',marginBottom:36}},
       React.createElement('div',{style:{width:40,height:40,borderRadius:12,background:'linear-gradient(135deg,#2563EB,#7C3AED)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 24px rgba(37,99,235,0.5)',flexShrink:0}},
-        React.createElement('span',{style:{fontSize:15,fontWeight:800,color:'#fff',letterSpacing:'0.05em'}},'BG')
+        React.createElement('span',{style:{fontSize:15,fontWeight:800,color:'#fff',letterSpacing:'0.05em'}},'NBG')
       ),
       React.createElement('div',null,
-        React.createElement('div',{style:{fontSize:15,fontWeight:700,color:'#F1F5F9',letterSpacing:'0.02em'}},'BankGuard'),
+        React.createElement('div',{style:{fontSize:15,fontWeight:700,color:'#F1F5F9',letterSpacing:'0.02em'}},'NexusAI-BankGuard'),
         React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.28)',letterSpacing:'0.12em',marginTop:1}},'NEURAL CREDIT v2.4')
       )
     ),
@@ -552,7 +552,7 @@ const TopBar=({isConnected})=>{
     // Welcome
     React.createElement('div',{style:{flex:1}},
       React.createElement('h1',{style:{fontSize:18,fontWeight:700,color:'#E2E8F0',marginBottom:2}},
-        'Welcome to ',React.createElement('span',{className:'gradient-text'},'BankGuard')
+        'Welcome to ',React.createElement('span',{className:'gradient-text'},'NexusAI-BankGuard')
       ),
       React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.35)'}},dateStr+' · '+timeStr)
     ),
@@ -703,12 +703,12 @@ const App=()=>{
         screen==='about'&&React.createElement('div',{style:{maxWidth:700,margin:'0 auto'},className:'fade-in'},
           React.createElement('div',{className:'metric-card',style:{padding:36,textAlign:'center'}},
             React.createElement('div',{style:{width:64,height:64,borderRadius:18,background:'linear-gradient(135deg,#2563EB,#7C3AED)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',boxShadow:'0 0 30px rgba(37,99,235,0.5)'}},
-              React.createElement('span',{style:{fontSize:24,fontWeight:800,color:'#fff'}},'BG')
+              React.createElement('span',{style:{fontSize:24,fontWeight:800,color:'#fff'}},'NBG')
             ),
-            React.createElement('h2',{style:{fontSize:26,fontWeight:800,marginBottom:8}},React.createElement('span',{className:'gradient-text'},'BankGuard')),
+            React.createElement('h2',{style:{fontSize:26,fontWeight:800,marginBottom:8}},React.createElement('span',{className:'gradient-text'},'NexusAI-BankGuard')),
             React.createElement('div',{style:{fontSize:12,color:'rgba(255,255,255,0.4)',letterSpacing:'0.15em',marginBottom:24}},'NEURAL CREDIT SYSTEM v2.4'),
             React.createElement('div',{style:{fontSize:14,color:'rgba(255,255,255,0.5)',lineHeight:1.8,maxWidth:480,margin:'0 auto',marginBottom:28}},
-              'BankGuard is a multi-agent AI platform for SME loan decisioning. It runs 5 specialized agents in sequence — intake, document verification, fraud intelligence, business validation, and risk scoring — to produce a fully auditable credit decision in under 4 seconds.'
+              'NexusAI-BankGuard is a multi-agent AI platform for SME loan decisioning. It runs 5 specialized agents in sequence — intake, document verification, fraud intelligence, business validation, and risk scoring — to produce a fully auditable credit decision in under 4 seconds.'
             ),
             React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:28}},
               [['5','AI Agents'],['40+','Risk Signals'],['< 4s','Decision Time'],['100%','Audit Trail']].map(([v,l],i)=>
