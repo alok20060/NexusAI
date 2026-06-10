@@ -342,7 +342,17 @@ async def analyze_loan(payload: LoanAnalysisInput):
             "document_completeness": result.get("document_completeness", 0.0),
             "upload_progress": result.get("upload_progress", 0.0),
             "explainability_report": result.get("explainability_report", ""),
-            "timeline": result.get("timeline", [])
+            "timeline": result.get("timeline", []),
+            "document_intelligence": result.get("document_intelligence"),
+            "ai_underwriting_insights": result.get("ai_underwriting_insights"),
+            "underwriting_intelligence": result.get("underwriting_intelligence"),
+            "alternative_credit_score": result.get("alternative_credit_score"),
+            "collateral_strength": result.get("collateral_strength"),
+            "collateral_value": result.get("collateral_value"),
+            "cash_flow_health": result.get("cash_flow_health"),
+            "sustainability_score": result.get("sustainability_score"),
+            "trust_score": result.get("trust_score"),
+            "zero_trust_data": result.get("zero_trust_data")
         }
         
         # Ensure reference ID makes sense
@@ -375,6 +385,7 @@ async def analyze_loan(payload: LoanAnalysisInput):
             "agent_4_output": result["agent_4_output"],
             "agent_5_output": result["agent_5_output"],
             "agent_6_output": result.get("agent_6_output", {}),
+            "agent_7_output": result.get("agent_7_output", {}),
             "orchestrator_decision": result["orchestrator_decision"],
             "final_response": final_resp
         }
@@ -383,6 +394,92 @@ async def analyze_loan(payload: LoanAnalysisInput):
     except Exception as e:
         logger.error(f"Error executing loan analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal multi-agent system failure: {str(e)}")
+
+from pydantic import BaseModel
+class ManualReviewActionInput(BaseModel):
+    application_id: str
+    action: str  # "Approve", "Reject", "Request Documents"
+    reviewer: str = "Human Reviewer"
+    notes: str = ""
+
+@app.get("/manual-review/queue")
+async def get_manual_review_queue():
+    """
+    Returns all enqueued manual review cases from the database.
+    """
+    try:
+        cursor = orchestrator.db.manual_review_cases.find({}, {"_id": 0})
+        cases = await cursor.to_list(length=100)
+        # Fetch corresponding details from applications
+        for case in cases:
+            app_id = case.get("application_id")
+            app_doc = await orchestrator.db.applications.find_one({"application_id": app_id})
+            if app_doc:
+                case["business_name"] = app_doc.get("business_name", "Unknown Business")
+                case["loan_amount"] = app_doc.get("loan_amount", 0.0)
+                case["monthly_revenue"] = app_doc.get("revenue", 0.0) / 12.0
+        return cases
+    except Exception as e:
+        logger.error(f"Error fetching manual review queue: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/manual-review/action")
+async def process_manual_review_action(payload: ManualReviewActionInput):
+    """
+    Allows reviewers to Approve, Reject, or Request additional documents for enqueued cases.
+    Updates the application status and enqueued case status in the DB.
+    """
+    try:
+        app_id = payload.application_id
+        action = payload.action
+        
+        # Validate action
+        if action not in ["Approve", "Reject", "Request Documents"]:
+            raise HTTPException(status_code=400, detail=f"Invalid action: {action}")
+            
+        case = await orchestrator.db.manual_review_cases.find_one({"application_id": app_id})
+        if not case:
+            raise HTTPException(status_code=404, detail=f"No manual review case found for application {app_id}")
+            
+        new_status = "Completed"
+        mapped_decision = "Approve" if action == "Approve" else "Reject" if action == "Reject" else "Additional Verification"
+        
+        # Update applications decision
+        await orchestrator.db.applications.update_one(
+            {"application_id": app_id},
+            {"$set": {"decision": mapped_decision}}
+        )
+        
+        # Update manual review case status
+        await orchestrator.db.manual_review_cases.update_one(
+            {"application_id": app_id},
+            {"$set": {
+                "status": new_status,
+                "assigned_reviewer": payload.reviewer,
+                "timestamp": datetime.now().isoformat(),
+                "details.reviewer_notes": payload.notes,
+                "details.human_decision": mapped_decision
+            }}
+        )
+        
+        # Update timeline stage
+        await orchestrator.db.application_timeline.update_one(
+            {"application_id": app_id, "stage": "Decision Explainability"},
+            {"$set": {
+                "status": "Completed",
+                "timestamp": datetime.now().isoformat()
+            }}
+        )
+        
+        return {
+            "status": "success",
+            "message": f"Application {app_id} has been manually resolved to '{mapped_decision}' by {payload.reviewer}."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resolving manual review: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 def health():

@@ -21,6 +21,10 @@ class RiskScoringOutput(BaseModel):
     recommendation: str = Field(description="Lending recommendation: 'Approve', 'Manual Review', or 'Reject'")
     confidence: float = Field(description="Confidence score for the risk assessment, between 0.0 and 1.0")
     loan_to_revenue_ratio: float = Field(description="The calculated loan-to-revenue ratio")
+    alternative_credit_score: list[int] = Field(default=[], description="Alternative credit score (0-100) wrapped in a list or None")
+    collateral_quality: list[str] = Field(default=[], description="Collateral quality assessment wrapped in a list or None")
+    cash_flow_health: list[str] = Field(default=[], description="Cash flow health assessment wrapped in a list or None")
+    business_sustainability: list[int] = Field(default=[], description="Sustainability score wrapped in a list or None")
 
 class ApplicantProfilingOutput(BaseModel):
     applicant_type: str = Field(description="Classified applicant type: 'Beginner Entrepreneur', 'Experienced Business Owner', or 'High-Value Loan Applicant'")
@@ -32,9 +36,26 @@ class DocumentVerificationOutput(BaseModel):
     verified_documents: list[str] = Field(description="List of verified documents")
     missing_documents: list[str] = Field(description="List of missing documents")
     unsupported_documents: list[str] = Field(description="List of unsupported or corrupted documents")
+    extracted_fields: dict = Field(default={}, description="Extracted key-value pairs from documents")
+    extraction_confidence: float = Field(default=1.0, description="Average confidence score of extraction (0.0 to 1.0)")
+    inconsistencies: list[str] = Field(default=[], description="Consistency check warnings and mismatch messages")
+    verification_status: str = Field(default="Verified", description="Final verification status (Verified, Partial Extraction, Mismatch Detected)")
+    consistency_score: float = Field(default=100.0, description="Computed consistency score (0 to 100)")
+    document_health_score: float = Field(default=100.0, description="Computed document health score (0 to 100)")
+    mismatch_severity: str = Field(default="LOW", description="Overall severity of mismatches (LOW, MEDIUM, HIGH, CRITICAL)")
+    normalized_business_name: str = Field(default="", description="Normalized business name from extracted document")
+    normalized_owner_name: str = Field(default="", description="Normalized owner name from extracted document")
 
 class ExplainabilityOutput(BaseModel):
     explainability_report: str = Field(description="Human-readable decision explanation with ✓ and ✗ markers")
+
+class TrustComplianceOutput(BaseModel):
+    trust_score: int = Field(description="Computed trust score (0-100)")
+    source_integrity_status: str = Field(description="Integrity status of data sources (e.g. 'Passed', 'Failed')")
+    hash_verification_status: str = Field(description="Verification status of document/report hashes (e.g. 'Verified', 'Mismatch')")
+    audit_chain_verification_status: str = Field(description="Verification status of immutable audit ledger (e.g. 'Valid', 'Broken')")
+    compliance_summary: str = Field(description="Detailed compliance review summary and findings")
+    confidence: float = Field(description="Confidence of compliance assessment (0.0 to 1.0)")
 
 bankguard_applicant_profiling_agent = LlmAgent(
   name='bankguard_applicant_profiling_agent',
@@ -80,10 +101,10 @@ bankguard_document_verification_agent = LlmAgent(
   name='bankguard_document_verification_agent',
   model='gemini-2.5-flash',
   description=(
-      'NexusAI-NexusAI-BankGuard Document Verification Agent verifies the existence, supported file type, size, and corruption status of documents submitted with an SME loan application.'
+      'NexusAI-BankGuard AI Document Intelligence Agent extracts structured credit metrics from uploaded documents and evaluates consistency.'
   ),
   sub_agents=[],
-  instruction='You are NexusAI-NexusAI-BankGuard Document Verification Agent.\n\nYour responsibility is to check if required documents exist, are of a supported file format (PDF, PNG, JPEG, JPG), have a valid file size, and are not corrupted. You do NOT perform OCR and do NOT parse document contents. Report document completeness metrics factually.',
+  instruction='You are NexusAI-BankGuard AI Document Intelligence Agent. Your responsibility is to analyze the extracted document texts, populate the document intelligence parameters, and report consistency results. You consume the filesystem verification checks and raw text fields.',
   tools=[],
   output_schema=DocumentVerificationOutput,
 )
@@ -141,21 +162,27 @@ bankguard_risk_scoring_agent = LlmAgent(
   ),
   sub_agents=[],
   instruction='You are NexusAI-NexusAI-BankGuard Risk Scoring Agent.\n\n'
-              'Your responsibility is to assess repayment risk and loan suitability.\n\n'
+              'Your responsibility is to assess repayment risk and loan suitability by combining:\n'
+              '1. Fraud risk level from Agent 3\n'
+              '2. Document Consistency score from Agent 2\n'
+              '3. Document health score from Agent 2\n'
+              '4. AI confidence score from Agent 2\n'
+              '5. Alternative credit score (for Beginner Entrepreneurs)\n'
+              '6. Collateral quality/adequacy\n'
+              '7. Cash flow health (based on bank statements / transaction logs)\n'
+              '8. Business sustainability (maturity & growth trends)\n'
+              '9. Historical repayment behavior (using get_historical_loan_data)\n\n'
               'Before generating the response, you MUST read the outputs from the following agents:\n'
               '- Intake & Risk Coordinator\n'
-              '- Document Verification Agent\n'
+              '- Document Verification Agent (including Document Health, Consistency Score, AI Confidence, Extracted Fields)\n'
               '- Fraud Intelligence Agent\n'
               '- Business Validation Agent\n\n'
               'And you MUST query MongoDB through MCP by calling `get_historical_loan_data` with the business_name.\n\n'
-              'Evaluate the following:\n'
-              '- Revenue stability\n'
-              '- Existing debt\n'
-              '- Loan amount requested\n'
-              '- Years in business\n'
-              '- Fraud concerns\n'
-              '- Business legitimacy\n'
-              '- Historical repayment performance (using the records returned by get_historical_loan_data)\n\n'
+              'ALTERNATIVE CREDIT SCORING FOR BEGINNER ENTREPRENEURS:\n'
+              'If years_in_business < 2 or the applicant is classified as a Beginner Entrepreneur:\n'
+              '- Do NOT reject or penalize the applicant for having thin/no traditional credit history.\n'
+              '- Evaluate alternative data inputs: Savings bank balances, Asset proofs, Promoter education/professional background, Guarantor quality, Collateral details, and Account balances.\n'
+              '- If alternative parameters are strong, assign a lower risk score and recommend Approve or Manual Review (instead of Reject).\n\n'
               'You MUST calculate: ratio = loan_amount / monthly_revenue\n\n'
               'Apply the following risk rules:\n'
               '- If ratio > 100:\n'
@@ -168,7 +195,8 @@ bankguard_risk_scoring_agent = LlmAgent(
               '  repayment_risk = "Low", repayment_risk_level = "Low", risk_score = 20, recommendation = "Approve"\n\n'
               'Apply additional rules:\n'
               '- If fraud_risk == "High" -> recommendation = "Reject"\n'
-              '- If business_status != "Verified" -> recommendation = "Manual Review"\n\n'
+              '- If business_status != "Verified" -> recommendation = "Manual Review"\n'
+              '- If Document Health Score < 50 or Consistency Score < 50 -> increase risk score by +20 points and recommend Manual Review.\n\n'
               'Generate a structured response according to the output schema with:\n'
               '- repayment_risk\n'
               '- repayment_risk_level\n'
@@ -178,7 +206,11 @@ bankguard_risk_scoring_agent = LlmAgent(
               '- loan_suitability\n'
               '- recommendation\n'
               '- confidence: 0.0 to 1.0\n'
-              '- loan_to_revenue_ratio\n\n'
+              '- loan_to_revenue_ratio\n'
+              '- alternative_credit_score\n'
+              '- collateral_quality\n'
+              '- cash_flow_health\n'
+              '- business_sustainability\n\n'
               'Rules:\n'
               '1. Focus on repayment risk only.\n'
               '2. Do not perform fraud investigations.\n'
@@ -188,14 +220,23 @@ bankguard_risk_scoring_agent = LlmAgent(
   tools=[get_historical_loan_data],
   output_schema=RiskScoringOutput,
 )
-
+ 
 bankguard_explainability_agent = LlmAgent(
   name='bankguard_explainability_agent',
   model='gemini-2.5-flash',
   description='NexusAI-BankGuard Explainability Agent converts technical credit decision details into reader-friendly justifications.',
-  instruction='You are Explainability Agent. Your responsibility is to take the final recommendation, risk factors, and verification results and produce a clean, human-readable justification using ✓ for positive signals and ✗ for issues/red flags.',
+  instruction='You are Explainability Agent. Your responsibility is to take the final recommendation, risk factors, document intelligence, and verification results, and produce a structured explainability report containing: Decision, Confidence, Strengths, Weaknesses, Key risks, Supporting evidence, Reason codes, and Manual review recommendation.\n\nEnsure you structure the output report with the following headers:\n\nDECISION: [Approve/Manual Review/Reject]\nCONFIDENCE: [Score 0-100%]\nSTRENGTHS:\n[List business strengths, prefixed with ✓]\nWEAKNESSES:\n[List weaknesses, prefixed with ✗]\nKEY RISKS:\n[List key risk scoring concerns, prefixed with ✗]\nSUPPORTING EVIDENCE:\n[List verified fields or data metrics confirming details, prefixed with ✓]\nREASON CODES:\n[List reason codes like REV_MISMATCH, LOW_SCORE, FRAUD_ALERT, alt]\nMANUAL REVIEW RECOMMENDATION:\n[Specify if manual review is recommended or not, and state the primary reason prefixing with ✓ or ✗]',
   tools=[],
   output_schema=ExplainabilityOutput,
+)
+
+bankguard_trust_compliance_agent = LlmAgent(
+  name='bankguard_trust_compliance_agent',
+  model='gemini-2.5-flash',
+  description='NexusAI-BankGuard Trust & Compliance Agent validates source integrity, hashes, audit chains, and computes overall trust scores.',
+  instruction='You are Trust & Compliance Agent (Agent 7). Your responsibility is to validate source integrity, verify document and report hashes, check the cryptographic audit chain, calculate the trust score (0-100), and generate compliance summaries.',
+  tools=[],
+  output_schema=TrustComplianceOutput,
 )
 
 root_agent = LlmAgent(
@@ -204,7 +245,7 @@ root_agent = LlmAgent(
   description=(
       'NexusAI-NexusAI-BankGuard Orchestrator coordinates the full SME loan intelligence workflow. It receives the loan application, routes data to specialist agents, collects their outputs, combines findings, applies final decision rules, and generates a transparent risk report with evidence and next actions.'
   ),
-  sub_agents=[bankguard_intake__risk_coordinator, bankguard_document_verification_agent, bankguard_fraud_intelligence_agent, bankguard_business_validation_agent, bankguard_risk_scoring_agent, bankguard_explainability_agent],
+  sub_agents=[bankguard_intake__risk_coordinator, bankguard_document_verification_agent, bankguard_fraud_intelligence_agent, bankguard_business_validation_agent, bankguard_risk_scoring_agent, bankguard_explainability_agent, bankguard_trust_compliance_agent],
   instruction='You are NexusAI-NexusAI-BankGuard Orchestrator.\n\nYour role is to coordinate the entire loan assessment workflow. You do not perform deep fraud analysis, document verification, business validation, or repayment scoring yourself. Instead, you manage the specialist agents and produce the final decision report.',
   tools=[],
 )

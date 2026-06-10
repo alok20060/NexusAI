@@ -33,6 +33,15 @@ class DocumentVerificationOutput(BaseModel):
     verified_documents: list[str] = Field(description="List of verified documents")
     missing_documents: list[str] = Field(description="List of missing documents")
     unsupported_documents: list[str] = Field(description="List of unsupported or corrupted documents")
+    extracted_fields: dict = Field(default={}, description="Extracted key-value pairs from documents")
+    extraction_confidence: float = Field(default=1.0, description="Average confidence score of extraction (0.0 to 1.0)")
+    inconsistencies: list[str] = Field(default=[], description="Consistency check warnings and mismatch messages")
+    verification_status: str = Field(default="Verified", description="Final verification status (Verified, Partial Extraction, Mismatch Detected)")
+    consistency_score: float = Field(default=100.0, description="Computed consistency score (0 to 100)")
+    document_health_score: float = Field(default=100.0, description="Computed document health score (0 to 100)")
+    mismatch_severity: str = Field(default="LOW", description="Overall severity of mismatches (LOW, MEDIUM, HIGH, CRITICAL)")
+    normalized_business_name: str = Field(default="", description="Normalized business name from extracted document")
+    normalized_owner_name: str = Field(default="", description="Normalized owner name from extracted document")
 
 class ExplainabilityOutput(BaseModel):
     explainability_report: str = Field(description="Human-readable decision explanation with ✓ and ✗ markers")
@@ -81,10 +90,10 @@ bankguard_document_verification_agent = LlmAgent(
   name='bankguard_document_verification_agent',
   model='gemini-2.5-flash',
   description=(
-      'NexusAI-NexusAI-BankGuard Document Verification Agent verifies the existence, supported file type, size, and corruption status of documents submitted with an SME loan application.'
+      'NexusAI-BankGuard AI Document Intelligence Agent extracts structured credit metrics from uploaded documents and evaluates consistency.'
   ),
   sub_agents=[],
-  instruction='You are NexusAI-NexusAI-BankGuard Document Verification Agent.\n\nYour responsibility is to check if required documents exist, are of a supported file format (PDF, PNG, JPEG, JPG), have a valid file size, and are not corrupted. You do NOT perform OCR and do NOT parse document contents. Report document completeness metrics factually.',
+  instruction='You are NexusAI-BankGuard AI Document Intelligence Agent. Your responsibility is to analyze the extracted document texts, populate the document intelligence parameters, and report consistency results. You consume the filesystem verification checks and raw text fields.',
   tools=[],
   output_schema=DocumentVerificationOutput,
 )
