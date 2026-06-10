@@ -3,12 +3,12 @@ from typing import Any, List, Optional
 
 class InitializeApplicationInput(BaseModel):
     business_name: str = Field(description="Name of the business requesting the loan")
-    owner_name: str = Field(description="Name of the business owner or promoter")
+    owner_name: Optional[str] = Field(default="", description="Name of the business owner or promoter")
     loan_amount: float = Field(description="Loan amount requested")
-    monthly_revenue: float = Field(description="Monthly revenue of the business")
-    industry: str = Field(description="Industry sector of the business")
-    loan_purpose: str = Field(description="Purpose of the loan")
-    years_in_business: int = Field(default=5, description="Years in business of the entity")
+    monthly_revenue: Optional[float] = Field(default=0.0, description="Monthly revenue of the business")
+    industry: Optional[str] = Field(default="General Trade", description="Industry sector of the business")
+    loan_purpose: Optional[str] = Field(default="Working capital", description="Purpose of the loan")
+    years_in_business: Optional[int] = Field(default=5, description="Years in business of the entity")
 
 class InitializeApplicationResponse(BaseModel):
     application_id: str = Field(description="Generated application ID")
@@ -17,12 +17,12 @@ class InitializeApplicationResponse(BaseModel):
 
 class LoanAnalysisInput(BaseModel):
     business_name: str = Field(description="Name of the business requesting the loan")
-    owner_name: str = Field(description="Name of the business owner or promoter")
+    owner_name: Optional[str] = Field(default="", description="Name of the business owner or promoter")
     loan_amount: float = Field(description="Loan amount requested")
-    monthly_revenue: float = Field(description="Monthly revenue of the business")
-    industry: str = Field(description="Industry sector of the business")
-    loan_purpose: str = Field(description="Purpose of the loan")
-    years_in_business: int = Field(default=5, description="Years in business of the entity")
+    monthly_revenue: Optional[float] = Field(default=0.0, description="Monthly revenue of the business")
+    industry: Optional[str] = Field(default="General Trade", description="Industry sector of the business")
+    loan_purpose: Optional[str] = Field(default="Working capital", description="Purpose of the loan")
+    years_in_business: Optional[int] = Field(default=5, description="Years in business of the entity")
     application_id: Optional[str] = Field(default=None, description="Pre-initialized application ID if available")
 
 class AgentTraceItem(BaseModel):
@@ -203,6 +203,10 @@ class FinalResponseModel(BaseModel):
     sustainability_score: Optional[int] = Field(default=None, description="Business sustainability score")
     trust_score: Optional[int] = Field(default=None, description="Computed trust score (0-100)")
     zero_trust_data: Optional[ZeroTrustPayload] = Field(default=None, description="Zero-trust fields payload")
+    document_hashes: Optional[List[dict]] = Field(default=[], description="SHA-256 hashes of uploaded files")
+    report_hashes: Optional[List[dict]] = Field(default=[], description="SHA-256 hashes of generated reports")
+    audit_chain: Optional[List[dict]] = Field(default=[], description="Lightweight blockchain ledger audit entries")
+    checklist: Optional[List[dict]] = Field(default=[], description="Checklist with document statuses")
 
 class LoanAnalysisResponse(BaseModel):
     input: dict = Field(description="Input payload parameters")

@@ -90,6 +90,41 @@ body{background:#070B1F;color:#E2E8F0;font-family:'Inter',sans-serif;overflow-x:
 .sidebar-section-label{font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.2);padding:0 16px;margin-bottom:6px;margin-top:4px}
 @keyframes breathe{0%,100%{opacity:1}50%{opacity:0.5}}
 .status-dot-pulse{animation:breathe 2s ease-in-out infinite}
+@keyframes borderPulse {
+  0% { border-color: rgba(59, 130, 246, 0.4); box-shadow: 0 0 4px rgba(59, 130, 246, 0.1); }
+  100% { border-color: rgba(59, 130, 246, 1); box-shadow: 0 0 16px rgba(59, 130, 246, 0.4); }
+}
+.pulsing-blue-card {
+  animation: borderPulse 1.5s infinite alternate !important;
+}
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #printable-certificate, #printable-certificate * {
+    visibility: visible !important;
+  }
+  #printable-certificate {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    border: 3px double #000 !important;
+    background: #FFF !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    padding: 32px !important;
+    border-radius: 12px !important;
+  }
+  #printable-certificate * {
+    color: #000 !important;
+    background: transparent !important;
+  }
+  #printable-certificate h4 {
+    font-size: 18px !important;
+    margin-bottom: 8px !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -296,14 +331,14 @@ const Select=({label,options,value,onChange})=>
 
 // ─── FORM COMPONENT ──────────────────────────────────────────────────────────
 const LoanForm=({onSubmit,loading})=>{
-  const [form,setForm]=useState({biz:'',owner:'',amount:'',revenue:'',years:'5',industry:'',purpose:''});
+  const [form,setForm]=useState({biz:'',owner:'',amount:'',revenue:'',years:'5',industry:'',purpose:'',debt:'0'});
   const [errors,setErrors]=useState({});
   const [showDemo,setShowDemo]=useState(false);
   const [activeDemo,setActiveDemo]=useState(null);
   const upd=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
   const loadDemo=idx=>{
     const c=DEMO_CASES[idx];
-    setForm({biz:c.name,owner:c.owner,amount:String(c.amount),revenue:String(c.revenue),years:String(c.years||5),industry:c.industry,purpose:c.purpose});
+    setForm({biz:c.name,owner:c.owner,amount:String(c.amount),revenue:String(c.revenue),years:String(c.years||5),industry:c.industry,purpose:c.purpose,debt:String(c.debt||0)});
     setActiveDemo(idx);setErrors({});
   };
   const validate=()=>{
@@ -311,7 +346,6 @@ const LoanForm=({onSubmit,loading})=>{
     if(!form.biz.trim())e.biz='Required';
     if(!form.owner.trim())e.owner='Required';
     if(!form.amount||isNaN(form.amount)||+form.amount<10000)e.amount='Min ₹10,000';
-    if(!form.revenue||isNaN(form.revenue)||+form.revenue<1000)e.revenue='Required';
     if(!form.years||isNaN(form.years)||+form.years<0)e.years='Min 0';
     setErrors(e);return Object.keys(e).length===0;
   };
@@ -346,8 +380,9 @@ const LoanForm=({onSubmit,loading})=>{
     React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:24}},
       React.createElement(Field,{label:'Business Entity Name',placeholder:'e.g. ABC Traders Pvt Ltd',half:false,value:form.biz,onChange:upd('biz'),error:errors.biz}),
       React.createElement(Field,{label:'Owner / Promoter',placeholder:'Full name',half:false,value:form.owner,onChange:upd('owner'),error:errors.owner}),
-      React.createElement(Field,{label:'Loan Amount (₹)',placeholder:'e.g. 500000',type:'number',half:true,value:form.amount,onChange:upd('amount'),error:errors.amount}),
-      React.createElement(Field,{label:'Monthly Revenue (₹)',placeholder:'e.g. 200000',type:'number',half:true,value:form.revenue,onChange:upd('revenue'),error:errors.revenue}),
+      React.createElement(Field,{label:'Loan Amount Requested (₹)',placeholder:'e.g. 500000',type:'number',half:true,value:form.amount,onChange:upd('amount'),error:errors.amount}),
+      React.createElement(Field,{label:'Declared Monthly Revenue (₹) - Preliminary Estimate Only',placeholder:'e.g. 200000',type:'number',half:true,value:form.revenue,onChange:upd('revenue')}),
+      React.createElement(Field,{label:'Declared Loan Exposure / Existing Debt (₹)',placeholder:'e.g. 0',type:'number',half:true,value:form.debt,onChange:upd('debt')}),
       React.createElement(Field,{label:'Business Age (Years)',placeholder:'e.g. 5',type:'number',half:true,value:form.years,onChange:upd('years'),error:errors.years}),
       React.createElement('div',{style:{gridColumn:'span 1'}},
         React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6}}, 'Industry Sector'),
@@ -370,7 +405,7 @@ const LoanForm=({onSubmit,loading})=>{
     ),
     React.createElement('button',{className:'btn-primary',onClick:submit,disabled:loading,style:{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10}},
       loading&&React.createElement('div',{className:'spinner',style:{width:16,height:16}}),
-      loading?'Running Neural Assessment…':'Initiate Neural Assessment →'
+      loading?'Initializing Application Checklist…':'Proceed to Document Upload Center →'
     )
   );
 };
@@ -834,7 +869,7 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
       React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:14,textTransform:'uppercase'}},'⬡ Reasoning Trace'),
       React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:8}},
         (fr.reasoning_trace||[]).map((t,i)=>{
-          const agentColors={'INTAKE':'#3B82F6','DOC-VERIFY':'#8B5CF6','FRAUD-INTEL':'#EF4444','BIZ-VALID':'#06B6D4','RISK-SCORING':'#F59E0B'};
+          const agentColors={'INTAKE':'#3B82F6','DOC-VERIFY':'#8B5CF6','FRAUD-INTEL':'#EF4444','BIZ-VALID':'#06B6D4','RISK-SCORING':'#F59E0B','EXPLAINER':'#10B981','COMPLIANCE':'#A78BFA'};
           const c=agentColors[t.agent]||'#60A5FA';
           return React.createElement('div',{key:i,style:{display:'flex',gap:12,padding:'10px 14px',borderRadius:10,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)'}},
             React.createElement('span',{style:{fontSize:9,padding:'2px 8px',borderRadius:4,background:`${c}1A`,color:c,border:`1px solid ${c}4D`,fontFamily:'JetBrains Mono, monospace',letterSpacing:'0.08em',flexShrink:0,alignSelf:'flex-start'}},t.agent),
@@ -844,16 +879,256 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
       )
     ),
 
+    // ── OCR EXTRACTED FIELDS (ZERO-TRUST DATA MODEL) ─────────────────────────
+    fr.zero_trust_data && React.createElement('div',{className:'metric-card',style:{border:'1px solid rgba(129,140,248,0.25)',background:'rgba(129,140,248,0.02)'}},
+      React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:16,textTransform:'uppercase',display:'flex',alignItems:'center',gap:8}},
+        React.createElement(Icon,{name:'eye',size:13,color:'#A78BFA'}),
+        '⬡ OCR Extracted Fields — Zero-Trust Data Model'
+      ),
+      React.createElement('div',{style:{fontSize:10,color:'rgba(255,255,255,0.3)',marginBottom:12,fontFamily:'JetBrains Mono, monospace',letterSpacing:'0.06em'}},
+        'Every field has: value · source · confidence · verification_status · timestamp'
+      ),
+      React.createElement('div',{style:{overflowX:'auto'}},
+        React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:11}},
+          React.createElement('thead',null,
+            React.createElement('tr',{style:{borderBottom:'1px solid rgba(255,255,255,0.08)'}},
+              ['Field','Value','Source','Confidence','Status','Timestamp'].map((h,i)=>
+                React.createElement('th',{key:i,style:{padding:'8px 12px',textAlign:'left',fontSize:9,color:'rgba(255,255,255,0.35)',letterSpacing:'0.12em',textTransform:'uppercase',whiteSpace:'nowrap'}},h)
+              )
+            )
+          ),
+          React.createElement('tbody',null,
+            Object.entries(fr.zero_trust_data).map(([field,fieldObj],i)=>{
+              if(!fieldObj||typeof fieldObj!=='object') return null;
+              const conf=Math.round((fieldObj.confidence||0)*100);
+              const vs=fieldObj.verification_status||'unverified';
+              const vsColor=vs==='verified'?'#34D399':vs==='unverified'?'#FCA5A5':'#FCD34D';
+              const confColor=conf>=90?'#34D399':conf>=70?'#FCD34D':'#FCA5A5';
+              return React.createElement('tr',{key:i,style:{borderBottom:'1px solid rgba(255,255,255,0.04)',transition:'background 0.2s'},
+                onMouseEnter:e=>e.currentTarget.style.background='rgba(255,255,255,0.03)',
+                onMouseLeave:e=>e.currentTarget.style.background='transparent'
+              },
+                React.createElement('td',{style:{padding:'8px 12px',color:'#C4B5FD',fontWeight:600,fontFamily:'JetBrains Mono, monospace',fontSize:10}},field.replace(/_/g,' ')),
+                React.createElement('td',{style:{padding:'8px 12px',color:'#E2E8F0',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
+                  fieldObj.value!==null&&fieldObj.value!==undefined ? String(fieldObj.value) : '—'
+                ),
+                React.createElement('td',{style:{padding:'8px 12px',color:'rgba(255,255,255,0.4)',fontFamily:'JetBrains Mono, monospace',fontSize:9}},
+                  (fieldObj.source||'unknown').replace(/_/g,' ')
+                ),
+                React.createElement('td',{style:{padding:'8px 12px'}},
+                  React.createElement('div',{style:{display:'flex',alignItems:'center',gap:6}},
+                    React.createElement('div',{style:{width:40,height:4,background:'rgba(255,255,255,0.06)',borderRadius:2,overflow:'hidden'}},
+                      React.createElement('div',{style:{width:`${conf}%`,height:'100%',background:confColor,borderRadius:2,transition:'width 0.8s ease'}})
+                    ),
+                    React.createElement('span',{style:{fontSize:9,color:confColor,fontFamily:'JetBrains Mono, monospace'}},`${conf}%`)
+                  )
+                ),
+                React.createElement('td',{style:{padding:'8px 12px'}},
+                  React.createElement('span',{className:'badge',style:{fontSize:8,padding:'2px 7px',background:`${vsColor}18`,color:vsColor,border:`1px solid ${vsColor}40`}},vs)
+                ),
+                React.createElement('td',{style:{padding:'8px 12px',color:'rgba(255,255,255,0.25)',fontFamily:'JetBrains Mono, monospace',fontSize:9}},
+                  fieldObj.timestamp ? new Date(fieldObj.timestamp).toLocaleTimeString('en-IN') : '—'
+                )
+              );
+            })
+          )
+        )
+      )
+    ),
+
+    // ── DOCUMENT VERIFICATION GRID ────────────────────────────────────────────
+    fr.checklist && fr.checklist.length > 0 && React.createElement('div',{className:'metric-card',style:{border:'1px solid rgba(59,130,246,0.2)'}},
+      React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:16,textTransform:'uppercase',display:'flex',alignItems:'center',gap:8}},
+        React.createElement(Icon,{name:'audit',size:13,color:'#60A5FA'}),
+        '⬡ Document Verification Status Grid'
+      ),
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))',gap:10}},
+        (fr.checklist||[]).map((doc,i)=>{
+          const s=doc.upload_status||'Pending';
+          const req=doc.required;
+          let bg='rgba(255,255,255,0.02)',border='1px dashed rgba(255,255,255,0.12)',ic='x',icColor='rgba(255,255,255,0.3)';
+          if(s==='Verified'){bg='rgba(16,185,129,0.06)';border='1px solid rgba(16,185,129,0.35)';ic='check';icColor='#34D399';}
+          else if(s==='Rejected'){bg='rgba(239,68,68,0.06)';border='1px solid rgba(239,68,68,0.35)';ic='alert';icColor='#FCA5A5';}
+          else if(s==='Uploaded'||s==='Processing'){bg='rgba(59,130,246,0.05)';border='1px solid rgba(59,130,246,0.4)';ic='loader';icColor='#93C5FD';}
+          return React.createElement('div',{key:i,style:{padding:'10px 12px',borderRadius:12,background:bg,border,display:'flex',alignItems:'center',gap:10,transition:'all 0.2s'}},
+            React.createElement('div',{style:{width:28,height:28,borderRadius:8,background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+              React.createElement(Icon,{name:ic,size:13,color:icColor})
+            ),
+            React.createElement('div',{style:{flex:1,minWidth:0}},
+              React.createElement('div',{style:{fontSize:10,fontWeight:600,color:'#E2E8F0',lineHeight:1.3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},doc.document_type),
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4,marginTop:3}},
+                React.createElement('span',{style:{fontSize:8,color:icColor,fontWeight:600}},s),
+                req&&React.createElement('span',{className:'badge badge-red',style:{fontSize:7,padding:'0px 4px'}},'REQ')
+              )
+            )
+          );
+        })
+      )
+    ),
+
+    // ── TRUST SCORE + COMPLIANCE ──────────────────────────────────────────────
+    fr.trust_score !== null && fr.trust_score !== undefined && React.createElement('div',{style:{display:'grid',gridTemplateColumns:'auto 1fr',gap:16,alignItems:'stretch'}},
+      // Trust Score Ring
+      React.createElement('div',{className:'metric-card',style:{minWidth:220,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,border:'1px solid rgba(129,140,248,0.3)',background:'rgba(129,140,248,0.02)'}},
+        React.createElement('div',{style:{fontSize:9,letterSpacing:'0.15em',color:'rgba(255,255,255,0.35)',textTransform:'uppercase'}},'Trust Score'),
+        React.createElement('div',{style:{position:'relative',width:120,height:120}},
+          React.createElement('svg',{width:120,height:120,viewBox:'0 0 120 120'},
+            React.createElement('circle',{cx:60,cy:60,r:50,fill:'none',stroke:'rgba(255,255,255,0.06)',strokeWidth:10}),
+            React.createElement('circle',{cx:60,cy:60,r:50,fill:'none',
+              stroke:fr.trust_score>=75?'#10B981':fr.trust_score>=50?'#F59E0B':'#EF4444',
+              strokeWidth:10,strokeLinecap:'round',
+              strokeDasharray:`${(fr.trust_score/100)*314} 314`,
+              strokeDashoffset:78.5,
+              style:{transition:'stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)',filter:`drop-shadow(0 0 8px ${fr.trust_score>=75?'rgba(16,185,129,0.6)':fr.trust_score>=50?'rgba(245,158,11,0.6)':'rgba(239,68,68,0.6)'})`}
+            })
+          ),
+          React.createElement('div',{style:{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}},
+            React.createElement('div',{style:{fontSize:26,fontWeight:800,color:fr.trust_score>=75?'#34D399':fr.trust_score>=50?'#FCD34D':'#FCA5A5'}},fr.trust_score),
+            React.createElement('div',{style:{fontSize:8,color:'rgba(255,255,255,0.35)',letterSpacing:'0.1em'}},'/100')
+          )
+        ),
+        React.createElement('div',{style:{fontSize:11,fontWeight:600,color:fr.trust_score>=75?'#34D399':fr.trust_score>=50?'#FCD34D':'#FCA5A5'}},
+          fr.trust_score>=75?'HIGH TRUST':fr.trust_score>=50?'MODERATE TRUST':'LOW TRUST'
+        )
+      ),
+      // Compliance summary
+      React.createElement('div',{className:'metric-card',style:{border:'1px solid rgba(96,165,250,0.2)',background:'rgba(96,165,250,0.01)'}},
+        React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:14,textTransform:'uppercase',display:'flex',alignItems:'center',gap:8}},
+          React.createElement(Icon,{name:'shield',size:13,color:'#60A5FA'}),
+          '⬡ Trust & Compliance Summary'
+        ),
+        React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+          [
+            {label:'Reference ID',val:fr.reference_id||'—',mono:true},
+            {label:'Document Completeness',val:`${Math.round((fr.document_completeness||0)*100)}%`,mono:false},
+            {label:'Verified Fields',val:`${(fr.document_intelligence&&fr.document_intelligence.verified_fields||[]).length} fields`,mono:false},
+            {label:'Mismatch Severity',val:(fr.document_intelligence&&fr.document_intelligence.mismatch_severity)||'LOW',mono:false},
+            {label:'Doc Hashes Stored',val:`${(fr.document_hashes||[]).length} files`,mono:false},
+            {label:'Audit Chain Blocks',val:`${(fr.audit_chain||[]).length} events`,mono:false},
+          ].map((row,i)=>React.createElement('div',{key:i,style:{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:11,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}},
+            React.createElement('span',{style:{color:'rgba(255,255,255,0.4)'}},'· '+row.label),
+            React.createElement('span',{style:{color:'#E2E8F0',fontFamily:row.mono?'JetBrains Mono, monospace':'inherit',fontSize:row.mono?10:11,fontWeight:600}},row.val)
+          ))
+        )
+      )
+    ),
+
+    // ── DOCUMENT HASHES ───────────────────────────────────────────────────────
+    fr.document_hashes && fr.document_hashes.length > 0 && React.createElement('div',{className:'metric-card',style:{border:'1px solid rgba(16,185,129,0.2)'}},
+      React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:14,textTransform:'uppercase',display:'flex',alignItems:'center',gap:8}},
+        React.createElement(Icon,{name:'audit',size:13,color:'#34D399'}),
+        '⬡ SHA-256 Document Integrity Hashes'
+      ),
+      React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:8}},
+        (fr.document_hashes||[]).map((h,i)=>React.createElement('div',{key:i,style:{display:'flex',alignItems:'center',gap:12,padding:'8px 12px',background:'rgba(16,185,129,0.04)',border:'1px solid rgba(16,185,129,0.15)',borderRadius:8}},
+          React.createElement(Icon,{name:'check',size:12,color:'#34D399'}),
+          React.createElement('div',{style:{flex:1,minWidth:0}},
+            React.createElement('div',{style:{fontSize:10,fontWeight:600,color:'#E2E8F0',marginBottom:2}},h.file_name||h.doc_type||'Document'),
+            React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.3)',fontFamily:'JetBrains Mono, monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},h.sha256_hash||'—')
+          ),
+          React.createElement('span',{className:'badge badge-green',style:{fontSize:8,padding:'1px 6px'}},'SHA-256')
+        ))
+      )
+    ),
+
+    // ── CRYPTOGRAPHIC AUDIT CHAIN ─────────────────────────────────────────────
+    fr.audit_chain && fr.audit_chain.length > 0 && React.createElement('div',{className:'metric-card',style:{border:'1px solid rgba(245,158,11,0.2)',background:'rgba(245,158,11,0.01)'}},
+      React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:14,textTransform:'uppercase',display:'flex',alignItems:'center',gap:8}},
+        React.createElement(Icon,{name:'cpu',size:13,color:'#FCD34D'}),
+        '⬡ Cryptographic Audit Chain — Blockchain Ledger'
+      ),
+      React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+        (fr.audit_chain||[]).map((block,i)=>{
+          const isFirst=i===0;
+          return React.createElement('div',{key:i,style:{position:'relative'}},
+            !isFirst&&React.createElement('div',{style:{position:'absolute',left:18,top:-10,width:1,height:10,background:'linear-gradient(180deg,rgba(245,158,11,0.4),rgba(245,158,11,0.1))'}}),
+            React.createElement('div',{style:{display:'flex',gap:12,padding:'12px 14px',background:'rgba(245,158,11,0.04)',border:'1px solid rgba(245,158,11,0.18)',borderRadius:10}},
+              React.createElement('div',{style:{width:36,height:36,borderRadius:10,background:'rgba(245,158,11,0.12)',border:'1px solid rgba(245,158,11,0.3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+                React.createElement('div',{style:{fontSize:11,fontWeight:800,color:'#FCD34D'}},'#'+(i+1))
+              ),
+              React.createElement('div',{style:{flex:1,minWidth:0}},
+                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}},
+                  React.createElement('span',{style:{fontSize:10,fontWeight:700,color:'#FCD34D',letterSpacing:'0.05em'}},block.event_type||'Event'),
+                  React.createElement('span',{style:{fontSize:9,color:'rgba(255,255,255,0.3)',fontFamily:'JetBrains Mono, monospace'}},block.timestamp?new Date(block.timestamp).toLocaleTimeString('en-IN'):'—')
+                ),
+                React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.35)',fontFamily:'JetBrains Mono, monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:2}},
+                  'hash: '+(block.current_hash||'—').substring(0,40)+'...'
+                ),
+                React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.2)',fontFamily:'JetBrains Mono, monospace',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
+                  'prev: '+(block.previous_hash||'0'.repeat(40)).substring(0,40)+'...'
+                )
+              )
+            )
+          );
+        })
+      )
+    ),
+
+    // ── PRINTABLE DECISION CERTIFICATE ────────────────────────────────────────
+    React.createElement('div',{id:'printable-certificate',className:'metric-card',style:{border:`2px solid ${decColor}40`,background:`${decColor}06`,pageBreakBefore:'auto'}},
+      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}},
+        React.createElement('div',null,
+          React.createElement('div',{style:{fontSize:10,letterSpacing:'0.2em',color:'rgba(255,255,255,0.35)',marginBottom:6,fontFamily:'JetBrains Mono, monospace'}},'NEXUSAI-BANKGUARD · OFFICIAL CREDIT DECISION CERTIFICATE'),
+          React.createElement('h4',{style:{fontSize:18,fontWeight:800,color:'#fff',marginBottom:4}},'Credit Assessment Report'),
+          React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.4)'}},new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'}))
+        ),
+        React.createElement('div',{style:{textAlign:'right'}},
+          React.createElement('div',{className:'badge',style:{fontSize:12,padding:'6px 14px',background:`${decColor}1A`,color:decColor,border:`1px solid ${decColor}4D`,display:'inline-flex'}},
+            isApproved?'✓ SANCTIONED':isRejected?'✕ DECLINED':'◈ MANUAL REVIEW'
+          ),
+          React.createElement('div',{style:{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:6,fontFamily:'JetBrains Mono, monospace'}},`REF: ${fr.reference_id||'—'}`)
+        )
+      ),
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:16,padding:'14px 0',borderTop:'1px solid rgba(255,255,255,0.06)',borderBottom:'1px solid rgba(255,255,255,0.06)'}},
+        [
+          {l:'Business',v:form.biz||'—'},
+          {l:'Owner',v:form.owner||'—'},
+          {l:'Industry',v:form.industry||'—'},
+          {l:'Loan Amount',v:'₹'+Number(form.amount||0).toLocaleString('en-IN')},
+          {l:'Risk Score',v:(fr.risk_score||0)+'/100'},
+          {l:'Trust Score',v:(fr.trust_score||0)+'/100'},
+        ].map((r,i)=>React.createElement('div',{key:i,style:{padding:'10px 12px',background:'rgba(255,255,255,0.02)',borderRadius:8,border:'1px solid rgba(255,255,255,0.06)'}},
+          React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.35)',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.08em'}},r.l),
+          React.createElement('div',{style:{fontSize:13,fontWeight:700,color:'#E2E8F0'}},r.v)
+        ))
+      ),
+      React.createElement('div',{style:{marginBottom:14}},
+        React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.3)',marginBottom:6,letterSpacing:'0.1em',textTransform:'uppercase'}},'Decision Summary'),
+        React.createElement('div',{style:{fontSize:12,color:'rgba(255,255,255,0.6)',lineHeight:1.6}},fr.decision_explanation||'Analysis complete.')
+      ),
+      (fr.document_hashes||[]).length>0&&React.createElement('div',{style:{marginBottom:14}},
+        React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.3)',marginBottom:6,letterSpacing:'0.1em',textTransform:'uppercase'}},'Document Integrity'),
+        React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:4}},
+          (fr.document_hashes||[]).map((h,i)=>React.createElement('div',{key:i,style:{fontSize:9,color:'rgba(255,255,255,0.35)',fontFamily:'JetBrains Mono, monospace'}},
+            `${(h.file_name||h.doc_type||'doc').substring(0,20).padEnd(20,' ')} · SHA-256: ${(h.sha256_hash||'').substring(0,24)}...`
+          ))
+        )
+      ),
+      React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.2)',fontFamily:'JetBrains Mono, monospace',paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.04)'}},
+        `Generated: ${new Date().toISOString()} · Platform: NexusAI-BankGuard v2.4 · ${(fr.audit_chain||[]).length} chain blocks · NOT A LEGAL DOCUMENT`
+      )
+    ),
+
     // ── ACTIONS ──────────────────────────────────────────────────────────────
-    React.createElement('div',{style:{display:'flex',gap:12,justifyContent:'center'}},
+    React.createElement('div',{style:{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}},
       React.createElement('button',{className:'btn-secondary',onClick:onReset,style:{display:'flex',alignItems:'center',gap:6}},
         React.createElement(Icon,{name:'plus',size:13,color:'currentColor'}),'New Application'
       ),
       React.createElement('button',{className:'btn-secondary',style:{display:'flex',alignItems:'center',gap:6},onClick:()=>{
         const lines=(fr.audit_log||[]).map(l=>`[${l.timestamp}] ${l.message}`).join('\n');
-        const blob=new Blob([`NEXUSAI-BANKGUARD AUDIT LOG\nREF: ${fr.reference_id}\n\n${lines}`],{type:'text/plain'});
+        const hashes=(fr.document_hashes||[]).map(h=>`${h.file_name||h.doc_type}: ${h.sha256_hash}`).join('\n');
+        const chain=(fr.audit_chain||[]).map((b,i)=>`Block #${i+1} [${b.event_type}]: ${b.current_hash}`).join('\n');
+        const blob=new Blob([`NEXUSAI-BANKGUARD AUDIT LOG\nREF: ${fr.reference_id}\nDecision: ${fr.final_recommendation}\nTrust Score: ${fr.trust_score}/100\n\n=== AUDIT LOG ===\n${lines}\n\n=== DOCUMENT HASHES ===\n${hashes}\n\n=== AUDIT CHAIN ===\n${chain}`],{type:'text/plain'});
         const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`NexusAI-BankGuard_${fr.reference_id}.txt`;a.click();
-      }},React.createElement(Icon,{name:'download',size:13,color:'currentColor'}),'Export Audit Log')
+      }},React.createElement(Icon,{name:'download',size:13,color:'currentColor'}),'Export Full Report'),
+      React.createElement('button',{className:'btn-secondary',style:{display:'flex',alignItems:'center',gap:6},onClick:()=>window.print()},
+        React.createElement(Icon,{name:'report',size:13,color:'currentColor'}),'Print Certificate'
+      ),
+      React.createElement('button',{className:'btn-secondary',style:{display:'flex',alignItems:'center',gap:6},onClick:()=>{
+        const json=JSON.stringify({reference_id:fr.reference_id,decision:fr.final_recommendation,trust_score:fr.trust_score,risk_score:fr.risk_score,zero_trust_data:fr.zero_trust_data,document_hashes:fr.document_hashes,audit_chain:fr.audit_chain},null,2);
+        const blob=new Blob([json],{type:'application/json'});
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`NexusAI_ZeroTrust_${fr.reference_id}.json`;a.click();
+      }},React.createElement(Icon,{name:'cpu',size:13,color:'currentColor'}),'Export JSON Proof')
     )
   );
 };
@@ -1171,11 +1446,12 @@ const UploadPanel=({applicationId,applicantType,requiredDocs,onBack,onSubmit})=>
     }
   };
 
-  const totalDocs=checklist.length;
-  const uploadedDocsCount=checklist.filter(d=>d.upload_status==='Uploaded').length;
-  const progressPercent=totalDocs > 0 ? Math.round((uploadedDocsCount/totalDocs)*100) : 0;
+  const requiredDocsList = checklist.filter(d=>d.required);
+  const totalRequired = requiredDocsList.length;
+  const uploadedRequired = requiredDocsList.filter(d=>['Uploaded','Processing','Verified'].includes(d.upload_status)).length;
+  const progressPercent = totalRequired > 0 ? Math.round((uploadedRequired/totalRequired)*100) : 0;
 
-  return React.createElement('div',{className:'metric-card',style:{padding:28,maxWidth:700,margin:'0 auto'}},
+  return React.createElement('div',{className:'metric-card',style:{padding:28,maxWidth:1100,margin:'0 auto'}},
     React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
       React.createElement('div',null,
         React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.12em',textTransform:'uppercase'}},'Step 2 of 3 · Verification uploads'),
@@ -1191,40 +1467,104 @@ const UploadPanel=({applicationId,applicantType,requiredDocs,onBack,onSubmit})=>
     // Progress Bar
     React.createElement('div',{style:{marginBottom:24}},
       React.createElement('div',{style:{display:'flex',justifyContent:'space-between',fontSize:12,fontWeight:600,color:'rgba(255,255,255,0.5)',marginBottom:6}},
-        React.createElement('span',null,'Checklist Progress'),
-        React.createElement('span',null,`${uploadedDocsCount} of ${totalDocs} uploaded (${progressPercent}%)`)
+        React.createElement('span',null,'Required Checklist Progress'),
+        React.createElement('span',null,`${uploadedRequired} of ${totalRequired} required uploaded (${progressPercent}%)`)
       ),
       React.createElement('div',{style:{width:'100%',height:8,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}},
-        React.createElement('div',{style:{width:`${progressPercent}%`,height:'100%',background:'linear-gradient(90deg,#2563EB,#7C3AED)',borderRadius:4,transition:'width 0.3s ease'}})
+        React.createElement('div',{style:{width:`${progressPercent}%`,height:'100%',background:'linear-gradient(90deg,#10B981,#3B82F6)',borderRadius:4,transition:'width 0.3s ease'}})
       )
     ),
     
-    // Documents list
-    React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:12,marginBottom:24}},
+    // Documents grid of 12 categories
+    React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))',gap:16,marginBottom:24}},
       checklist.map((doc,idx)=>{
-        const isUploaded = doc.upload_status === 'Uploaded';
+        const isUploaded = ['Uploaded', 'Processing', 'Verified'].includes(doc.upload_status);
         const isUploading = uploading[doc.document_type];
+        const status = doc.upload_status || 'Pending';
         
-        return React.createElement('div',{key:idx,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12}},
-          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12}},
-            React.createElement('div',{style:{width:32,height:32,borderRadius:8,background:isUploaded?'rgba(16,185,129,0.1)':'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center'}},
-              React.createElement(Icon,{name:isUploaded?'check':'x',size:16,color:isUploaded?'#10B981':'rgba(255,255,255,0.3)'})
-            ),
-            React.createElement('div',null,
-              React.createElement('div',{style:{fontSize:13,fontWeight:600,color:'#fff'}},doc.document_type),
-              React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.4)',marginTop:2}},
-                isUploaded ? `✓ File: ${doc.file_name}` : '✗ File missing'
-              )
-            )
+        let cardStyle = {
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: 16,
+          borderRadius: 16,
+          minHeight: 165,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          position: 'relative'
+        };
+        
+        let isPulsing = false;
+        if (status === 'Pending') {
+          cardStyle.border = '1px dashed rgba(255, 255, 255, 0.18)';
+          cardStyle.background = 'rgba(255, 255, 255, 0.01)';
+        } else if (status === 'Uploaded' || status === 'Processing') {
+          cardStyle.border = '2px solid #3B82F6';
+          cardStyle.background = 'rgba(59, 130, 246, 0.04)';
+          cardStyle.boxShadow = '0 0 14px rgba(59, 130, 246, 0.2)';
+          isPulsing = true;
+        } else if (status === 'Verified') {
+          cardStyle.border = '2px solid #10B981';
+          cardStyle.background = 'rgba(16, 185, 129, 0.04)';
+          cardStyle.boxShadow = '0 0 14px rgba(16, 185, 129, 0.2)';
+        } else if (status === 'Rejected') {
+          cardStyle.border = '2px solid #EF4444';
+          cardStyle.background = 'rgba(239, 68, 68, 0.04)';
+          cardStyle.boxShadow = '0 0 14px rgba(239, 68, 68, 0.2)';
+        }
+
+        const badgeColor = doc.required ? 'badge-red' : 'badge-blue';
+        const badgeLabel = doc.required ? 'REQUIRED' : 'OPTIONAL';
+        
+        let statusEl;
+        if (status === 'Verified') {
+          statusEl = React.createElement('div', {style: {display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#34D399', fontWeight: 600}},
+            React.createElement(Icon, {name: 'check', size: 12, color: '#34D399'}), 'Verified'
+          );
+        } else if (status === 'Rejected') {
+          statusEl = React.createElement('div', {style: {display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#FCA5A5', fontWeight: 600}},
+            React.createElement(Icon, {name: 'alert', size: 12, color: '#EF4444'}), 'Rejected'
+          );
+        } else if (status === 'Uploaded' || status === 'Processing') {
+          statusEl = React.createElement('div', {style: {display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#93C5FD', fontWeight: 600}},
+            React.createElement(Icon, {name: 'loader', size: 12, className: 'status-dot-pulse'}), 'Processing OCR...'
+          );
+        } else {
+          statusEl = React.createElement('div', {style: {display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255,255,255,0.3)'}},
+            React.createElement(Icon, {name: 'x', size: 12, color: 'rgba(255,255,255,0.3)'}), 'Pending'
+          );
+        }
+
+        return React.createElement('div',{key:idx,style:cardStyle,className:isPulsing?'pulsing-blue-card':undefined},
+          React.createElement('div', {style: {display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8}},
+            React.createElement('div', {style: {fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1.3}}, doc.document_type),
+            React.createElement('span', {className: `badge ${badgeColor}`, style: {fontSize: 8, padding: '1px 5px', flexShrink: 0}}, badgeLabel)
           ),
           
-          React.createElement('div',null,
+          React.createElement('div', {style: {margin: '12px 0'}},
+            statusEl,
+            isUploaded && doc.file_name !== 'N/A' && React.createElement('div', {
+              style: {
+                fontSize: 10,
+                color: 'rgba(255,255,255,0.4)',
+                textOverflow: 'ellipsis',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                marginTop: 6,
+                maxWidth: '100%'
+              },
+              title: doc.file_name
+            }, `File: ${doc.file_name}`)
+          ),
+          
+          React.createElement('div',{style:{marginTop:'auto'}},
             isUploading 
-              ? React.createElement('span',{style:{fontSize:12,color:'rgba(255,255,255,0.4)',display:'flex',alignItems:'center',gap:6}},
-                  React.createElement(Icon,{name:'loader',size:14,className:'status-dot-pulse'}), 'Uploading...'
+              ? React.createElement('span',{style:{fontSize:11,color:'rgba(255,255,255,0.4)',display:'flex',alignItems:'center',gap:6}},
+                  React.createElement(Icon,{name:'loader',size:12,className:'status-dot-pulse'}), 'Uploading...'
                 )
-              : React.createElement('label',{style:{cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,padding:'6px 12px',borderRadius:8,background:isUploaded?'rgba(255,255,255,0.06)':'#2563EB',color:'#fff',fontSize:12,fontWeight:600,border:isUploaded?'1px solid rgba(255,255,255,0.12)':'none',transition:'all 0.2s'}},
-                  React.createElement(Icon,{name:'download',size:12,color:'#fff'}),
+              : React.createElement('label',{style:{cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'6px 10px',borderRadius:8,background:isUploaded?'rgba(255,255,255,0.06)':'linear-gradient(135deg,#2563EB,#7C3AED)',color:'#fff',fontSize:11,fontWeight:600,border:isUploaded?'1px solid rgba(255,255,255,0.12)':'none',transition:'all 0.2s',width:'100%',textAlign:'center'}},
+                  React.createElement(Icon,{name:isUploaded?'external':'download',size:10,color:'#fff'}),
                   isUploaded ? 'Re-upload' : 'Upload File',
                   React.createElement('input',{
                     type:'file',
@@ -1416,7 +1756,7 @@ const App=()=>{
         business_name:form.biz,
         owner_name:form.owner,
         loan_amount:+form.amount,
-        monthly_revenue:+form.revenue,
+        monthly_revenue:+form.revenue || 0.0,
         years_in_business:+form.years||5,
         industry:form.industry||'General Trade',
         loan_purpose:form.purpose||'Working capital'
@@ -1459,7 +1799,7 @@ const App=()=>{
         business_name:formData.biz,
         owner_name:formData.owner,
         loan_amount:+formData.amount,
-        monthly_revenue:+formData.revenue,
+        monthly_revenue:+formData.revenue || 0.0,
         years_in_business:+formData.years||5,
         industry:formData.industry||'General Trade',
         loan_purpose:formData.purpose||'Working capital',
