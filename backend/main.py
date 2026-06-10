@@ -2,9 +2,16 @@ import os
 import sys
 import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any
+
+# Load .env file for local development (no-op in production)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not required in production
 
 # Ensure project root is in sys.path for Vercel deployment and local runs
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import schemas and orchestrator
 from backend.schemas import LoanAnalysisInput, LoanAnalysisResponse, InitializeApplicationInput, InitializeApplicationResponse
 from backend.orchestrator import BankGuardOrchestrator
+from backend.database import verify_atlas_connection, DB_NAME, MONGO_URI
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -31,6 +39,52 @@ app.add_middleware(
 # Instantiate the Orchestrator
 orchestrator = BankGuardOrchestrator()
 
+
+@app.on_event("startup")
+async def startup_atlas_check():
+    """Verify Atlas connectivity on application startup."""
+    if not MONGO_URI:
+        logger.error(
+            "MONGO_URI is not set — database endpoints will return 503. "
+            "Set MONGO_URI in Vercel Environment Variables."
+        )
+        return
+    if orchestrator.db_client is None:
+        logger.error("MongoDB client failed to initialize — check MONGO_URI credentials.")
+        return
+    status = await verify_atlas_connection(orchestrator.db_client)
+    if not status.get("connected"):
+        logger.error(f"Atlas startup check failed: {status.get('error')}")
+
+
+# ── DB guard ─────────────────────────────────────────────────────────────────
+def _require_db():
+    """Raise HTTP 503 if the Atlas DB is not available instead of crashing with 500."""
+    if orchestrator.db is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "Database unavailable",
+                "message": "MongoDB Atlas is not connected. Ensure MONGO_URI is set correctly in environment variables.",
+                "database": DB_NAME,
+                "action": "Set MONGO_URI to your Atlas connection string on Vercel: Project → Settings → Environment Variables"
+            }
+        )
+
+
+def _mongo_error_json(endpoint: str, error: Exception, status_code: int = 503) -> JSONResponse:
+    """Return a structured JSON error instead of an unhandled 500 crash."""
+    logger.error(f"MongoDB error on {endpoint}: {error}", exc_info=True)
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": "Database operation failed",
+            "message": str(error),
+            "endpoint": endpoint,
+            "database": DB_NAME,
+        },
+    )
+
 import random
 from datetime import datetime
 from backend.agents import bankguard_applicant_profiling_agent
@@ -43,6 +97,7 @@ async def initialize_application(payload: InitializeApplicationInput):
     """
     logger.info(f"Initializing application for business: {payload.business_name}")
     try:
+        _require_db()
         app_id = f"APP{random.randint(100, 999)}"
         
         # Prepare application structure
@@ -205,9 +260,10 @@ async def initialize_application(payload: InitializeApplicationInput):
             "applicant_type": applicant_type,
             "required_documents": required_docs
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error initializing application: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return _mongo_error_json("/initialize-application", e)
 
 @app.post("/upload-document")
 async def upload_document(
@@ -221,6 +277,7 @@ async def upload_document(
     """
     logger.info(f"Uploading {document_type} for application {application_id}")
     try:
+        _require_db()
         # Check if application exists
         app_profile = await orchestrator.db.applicant_profiles.find_one({"application_id": application_id})
         if not app_profile:
@@ -281,8 +338,7 @@ async def upload_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error uploading document: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return _mongo_error_json("/upload-document", e)
 
 @app.get("/application-documents/{application_id}")
 async def get_application_documents(application_id: str):
@@ -291,6 +347,7 @@ async def get_application_documents(application_id: str):
     """
     logger.info(f"Fetching checklist for application {application_id}")
     try:
+        _require_db()
         app_profile = await orchestrator.db.applicant_profiles.find_one({"application_id": application_id})
         if not app_profile:
             raise HTTPException(status_code=404, detail="Application profile not found")
@@ -333,9 +390,10 @@ async def get_application_documents(application_id: str):
                 })
             
         return checklist
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching checklist: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return _mongo_error_json(f"/application-documents/{application_id}", e)
 
 @app.post("/analyze-loan", response_model=LoanAnalysisResponse)
 async def analyze_loan(payload: LoanAnalysisInput):
@@ -439,9 +497,21 @@ async def analyze_loan(payload: LoanAnalysisInput):
         }
         return debug_response
 
+    except HTTPException:
+        raise
     except Exception as e:
+        err_msg = str(e).lower()
+        if "mongo" in err_msg or "database" in err_msg or orchestrator.db is None:
+            return _mongo_error_json("/analyze-loan", e)
         logger.error(f"Error executing loan analysis: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal multi-agent system failure: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal multi-agent system failure",
+                "message": str(e),
+                "endpoint": "/analyze-loan",
+            },
+        )
 
 from pydantic import BaseModel
 class ManualReviewActionInput(BaseModel):
@@ -456,6 +526,7 @@ async def get_manual_review_queue():
     Returns all enqueued manual review cases from the database.
     """
     try:
+        _require_db()
         cursor = orchestrator.db.manual_review_cases.find({}, {"_id": 0})
         cases = await cursor.to_list(length=100)
         # Fetch corresponding details from applications
@@ -467,9 +538,10 @@ async def get_manual_review_queue():
                 case["loan_amount"] = app_doc.get("loan_amount", 0.0)
                 case["monthly_revenue"] = app_doc.get("revenue", 0.0) / 12.0
         return cases
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching manual review queue: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return _mongo_error_json("/manual-review/queue", e)
 
 @app.post("/manual-review/action")
 async def process_manual_review_action(payload: ManualReviewActionInput):
@@ -478,6 +550,7 @@ async def process_manual_review_action(payload: ManualReviewActionInput):
     Updates the application status and enqueued case status in the DB.
     """
     try:
+        _require_db()
         app_id = payload.application_id
         action = payload.action
         
@@ -526,12 +599,26 @@ async def process_manual_review_action(payload: ManualReviewActionInput):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error resolving manual review: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return _mongo_error_json("/manual-review/action", e)
 
 @app.get("/health")
-def health():
-    return {"status": "online"}
+async def health():
+    """Returns API status and Atlas MongoDB connectivity."""
+    db_status = "disconnected"
+    db_name = orchestrator.db_name
+    if orchestrator.db_client is not None:
+        try:
+            await orchestrator.db_client.admin.command("ping")
+            db_status = "connected"
+        except Exception as e:
+            db_status = f"error: {str(e)[:80]}"
+    return {
+        "status": "online",
+        "database": db_status,
+        "db_name": db_name,
+        "atlas": db_status == "connected",
+        "mongo_uri_configured": bool(MONGO_URI),
+    }
 
 @app.get("/")
 async def get_frontend():

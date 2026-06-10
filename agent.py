@@ -1,6 +1,6 @@
 from google.adk.agents import LlmAgent
-from pymongo import MongoClient
 from pydantic import BaseModel, Field
+from backend.database import get_sync_db, DB_NAME
 from mcp_client import get_business_history, get_historical_loan_data
 
 class BusinessValidationOutput(BaseModel):
@@ -72,19 +72,23 @@ def query_mcp_fraud_cases(
   limit: int = 10,
 ) -> dict:
   """
-  Query the MongoDB MCP `fraud_cases` collection and return matching records.
+  Query the MongoDB Atlas `fraud_cases` collection and return matching records.
+  Uses MONGO_URI environment variable for Atlas connection.
   """
-  client = MongoClient('mongodb://localhost:27017')
-  db = client.mcp_demo
-  query: dict[str, str] = {}
-  if case_id:
-    query['case_id'] = case_id
-  if phone:
-    query['phone'] = phone
-  if address:
-    query['address'] = address
-  results = list(db.fraud_cases.find(query, {'_id': 0}).limit(limit))
-  return {'query': query, 'results': results}
+  try:
+    db = get_sync_db()
+    query: dict[str, str] = {}
+    if case_id:
+      query['case_id'] = case_id
+    if phone:
+      query['phone'] = phone
+    if address:
+      query['address'] = address
+    results = list(db.fraud_cases.find(query, {'_id': 0}).limit(limit))
+    return {'query': query, 'results': results, 'database': DB_NAME}
+  except Exception as e:
+    print(f"MongoDB error: {e}")
+    return {'query': {}, 'results': [], 'error': f'MongoDB error: {e}'}
 
 bankguard_document_verification_agent = LlmAgent(
   name='bankguard_document_verification_agent',

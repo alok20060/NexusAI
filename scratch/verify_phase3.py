@@ -81,8 +81,10 @@ async def run_tests():
         
         # Verify MongoDB database update
         print("Checking MongoDB document_analysis collection...")
-        db_client = AsyncIOMotorClient("mongodb://localhost:27017")
-        db = db_client.mcp_demo
+        db = orchestrator.db
+        if db is None:
+            print("SKIP: MONGO_URI not configured — Atlas connection unavailable")
+            return
         analysis_doc = await db.document_analysis.find_one({"application_id": app_id_1})
         print(f"Database Record: {analysis_doc}")
         

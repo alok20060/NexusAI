@@ -23,8 +23,10 @@ async def run_verifier():
     
     # 1. Connect to MongoDB
     logger.info("Connecting to MongoDB...")
-    client = AsyncIOMotorClient("mongodb://localhost:27017")
-    db = client.mcp_demo
+    db = orchestrator.db
+    if db is None:
+        logger.error("MONGO_URI not configured — cannot connect to Atlas")
+        return
     
     # Initialize collections
     await orchestrator._init_db_collections()

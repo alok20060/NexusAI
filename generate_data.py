@@ -6,8 +6,8 @@ Generates and upserts 100 complete applicant records across all 18
 MongoDB collections required by the NexusAI-BankGuard platform.
 
 Safe to run multiple times (idempotent via upsert).
-Database : mcp_demo
-Connection: mongodb://localhost:27017 (override via MONGO_URI env var)
+Database : bankguard (override via MONGO_DB_NAME env var)
+Connection: MongoDB Atlas via MONGO_URI environment variable
 """
 
 import hashlib
@@ -17,14 +17,15 @@ import random
 import sys
 from datetime import datetime, timedelta, timezone
 
-from pymongo import MongoClient, UpdateOne
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
+from backend.database import get_sync_client, DB_NAME, MONGO_URI
 
 # ──────────────────────────────────────────────────────────────
 # Config
 # ──────────────────────────────────────────────────────────────
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-DB_NAME   = "mcp_demo"
 SEED      = 42
 NUM_APPS  = 100
 DIST      = {"Approved": 60, "Manual Review": 20, "Rejected": 20}
@@ -331,14 +332,19 @@ for idx in range(NUM_APPS):
 print("=" * 60)
 print("NexusAI-BankGuard — MongoDB Seed Script v2.0")
 print("=" * 60)
-print(f"Connecting to {MONGO_URI} / database: {DB_NAME}")
+if not MONGO_URI:
+    print("[FAIL] MONGO_URI environment variable is not set.")
+    print("       Set it to your MongoDB Atlas connection string.")
+    sys.exit(1)
 
-client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+print(f"Connecting to Atlas / database: {DB_NAME}")
+
 try:
+    client = get_sync_client()
     client.admin.command("ping")
-    print("[OK] MongoDB connection successful")
+    print("[OK] Atlas connection established")
 except Exception as e:
-    print(f"[FAIL] Cannot connect to MongoDB: {e}")
+    print(f"[FAIL] MongoDB error: {e}")
     sys.exit(1)
 
 db = client[DB_NAME]

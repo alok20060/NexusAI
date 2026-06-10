@@ -1,14 +1,12 @@
 import asyncio
 import logging
-from pymongo import MongoClient
+import os
+from backend.database import get_sync_client, DB_NAME, MONGO_URI
 from mcp_client import get_business_history, get_historical_loan_data
 from orchestrator import BankGuardOrchestrator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("test_integration")
-
-MONGO_URI = "mongodb://localhost:27017"
-DB_NAME = "mcp_demo"
 
 # Sample data
 SAMPLE_BUSINESS = {
@@ -39,9 +37,16 @@ SAMPLE_LOAN_HISTORY = {
 }
 
 def setup_test_db():
-    logger.info("Setting up test database in MongoDB...")
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
+    if not MONGO_URI:
+        logger.error("MONGO_URI is not set. Skipping test database setup.")
+        return
+    logger.info("Setting up test database in MongoDB Atlas...")
+    try:
+        client = get_sync_client()
+        db = client[DB_NAME]
+    except Exception as e:
+        logger.error(f"MongoDB error: {e}")
+        return
     
     # Setup businesses collection
     db.businesses.delete_many({"business_name": "ABC Traders Pvt Ltd"})

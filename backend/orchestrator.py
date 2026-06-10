@@ -6,7 +6,7 @@ import random
 from datetime import datetime
 from typing import Any, Dict, List, Union, Optional
 from pydantic import BaseModel
-from motor.motor_asyncio import AsyncIOMotorClient
+from backend.database import MONGO_URI, DB_NAME, create_async_client
 
 # Import Pydantic schemas
 from backend.schemas import FinalDecisionOutput, AgentTraceItem, AuditLogItem
@@ -42,17 +42,29 @@ class BankGuardOrchestrator:
     def __init__(self, mock_mode: bool = False):
         self.mock_mode = mock_mode or (os.getenv("MOCK_AGENTS", "false").lower() == "true")
         self.logger = logging.getLogger("NexusAI-BankGuardOrchestrator")
-        
-        # MongoDB connection settings for storing results
-        self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-        self.db_name = "mcp_demo"
-        
-        try:
-            self.db_client = AsyncIOMotorClient(self.mongo_uri)
-            self.db = self.db_client[self.db_name]
-            self.logger.info("MongoDB Async Client initialized successfully")
-        except Exception as e:
-            self.logger.error(f"Failed to initialize MongoDB client: {e}")
+
+        # ── MongoDB / Atlas connection ────────────────────────────────────────
+        self.mongo_uri = MONGO_URI
+        self.db_name = DB_NAME
+        self.db_client = None
+        self.db = None
+
+        if not self.mongo_uri:
+            self.logger.error(
+                "MONGO_URI environment variable is not set. "
+                "MongoDB features will be unavailable. "
+                "Set MONGO_URI to your MongoDB Atlas connection string."
+            )
+        else:
+            try:
+                self.db_client = create_async_client()
+                self.db = self.db_client[self.db_name]
+                self.logger.info("[Atlas] MongoDB Async Client initialized successfully")
+                self.logger.info(f"[Atlas] Database selected: {self.db_name}")
+            except Exception as e:
+                self.logger.error(f"MongoDB error: {e}")
+                self.db_client = None
+                self.db = None
 
         # Initialize Gemini 2.5 client
         self.genai_client = None
@@ -72,9 +84,10 @@ class BankGuardOrchestrator:
         try:
             cols = await self.db.list_collection_names()
             new_cols = [
-                "applications", "documents", "document_analysis", "applicant_profiles",
-                "asset_records", "fraud_cases", "business_registry", "aadhaar_registry",
-                "pan_registry", "credit_history", "decision_history", "audit_chain",
+                "applications", "businesses", "documents", "document_analysis", "applicant_profiles",
+                "asset_records", "fraud_cases", "loan_history", "business_registry", "aadhaar_registry",
+                "pan_registry", "credit_history", "credit_scores", "identity_records",
+                "decision_history", "audit_chain", "audit_logs",
                 "blacklist", "previous_rejections", "previous_loans", "application_timeline",
                 "manual_review_cases", "underwriting_intelligence", "consent_records",
                 "document_hashes", "report_hashes", "alternative_credit_profiles",
@@ -923,7 +936,7 @@ class BankGuardOrchestrator:
             })
         
         elif agent_name == "bankguard_fraud_intelligence_agent":
-            from pymongo import MongoClient as _MongoClient
+            from backend.database import get_sync_client
             owner_val = str(app_data.get("owner_name", ""))
             
             # Extract identifiers from doc_verification
@@ -946,8 +959,10 @@ class BankGuardOrchestrator:
             db_error = None
             
             try:
-                _client = _MongoClient(self.mongo_uri, serverSelectionTimeoutMS=3000)
-                _db = _client["mcp_demo"]
+                if not self.mongo_uri:
+                    raise RuntimeError("MONGO_URI is not configured")
+                _client = get_sync_client()
+                _db = _client[self.db_name]
                 mongodb_connected = True
                 
                 # Check 1: fraud_cases collection
