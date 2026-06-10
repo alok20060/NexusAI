@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any
@@ -10,7 +10,7 @@ from typing import Any
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import schemas and orchestrator
-from backend.schemas import LoanAnalysisInput, LoanAnalysisResponse
+from backend.schemas import LoanAnalysisInput, LoanAnalysisResponse, InitializeApplicationInput, InitializeApplicationResponse
 from backend.orchestrator import BankGuardOrchestrator
 
 # Configure logging
@@ -31,6 +31,268 @@ app.add_middleware(
 # Instantiate the Orchestrator
 orchestrator = BankGuardOrchestrator()
 
+import random
+from datetime import datetime
+from backend.agents import bankguard_applicant_profiling_agent
+
+@app.post("/initialize-application", response_model=InitializeApplicationResponse)
+async def initialize_application(payload: InitializeApplicationInput):
+    """
+    Wizard Step 1: Initializes the application, runs Agent 0,
+    creates database records, and returns required document checklist.
+    """
+    logger.info(f"Initializing application for business: {payload.business_name}")
+    try:
+        app_id = f"APP{random.randint(100, 999)}"
+        
+        # Prepare application structure
+        application_data = {
+            "application_id": app_id,
+            "business_name": payload.business_name,
+            "owner_name": payload.owner_name,
+            "loan_amount": payload.loan_amount,
+            "monthly_revenue": payload.monthly_revenue,
+            "industry": payload.industry,
+            "loan_purpose": payload.loan_purpose,
+            "years_in_business": payload.years_in_business,
+            "country": "India"
+        }
+        
+        # Run Step 0 (Applicant Profiling Agent)
+        mock_mode = os.getenv("MOCK_AGENTS", "false").lower() == "true" or not orchestrator.db_client
+        
+        if mock_mode:
+            # Simple profiling logic
+            if payload.loan_amount >= 10000000:
+                applicant_type = "High-Value Loan Applicant"
+                required_docs = [
+                    "Business registration certificate",
+                    "Office address proof",
+                    "Utility bills",
+                    "Bank statements",
+                    "Tax returns",
+                    "Credit score report",
+                    "Audited financial statements",
+                    "Cash flow reports",
+                    "Inventory records",
+                    "Supplier contracts",
+                    "Collateral documents"
+                ]
+            elif payload.years_in_business < 2:
+                applicant_type = "Beginner Entrepreneur"
+                required_docs = [
+                    "Personal ID",
+                    "Asset proofs",
+                    "Property documents",
+                    "Savings account statements",
+                    "Education/professional background",
+                    "Guarantor information"
+                ]
+            else:
+                applicant_type = "Experienced Business Owner"
+                required_docs = [
+                    "Business registration certificate",
+                    "Office address proof",
+                    "Utility bills",
+                    "Bank statements",
+                    "Tax returns",
+                    "Credit score report"
+                ]
+            profile_confidence = 0.95
+        else:
+            profiling_output = await orchestrator._run_agent_step(
+                bankguard_applicant_profiling_agent,
+                application_data
+            )
+            applicant_type = profiling_output.get("applicant_type", "Beginner Entrepreneur")
+            required_docs = profiling_output.get("required_documents", [])
+            profile_confidence = profiling_output.get("profile_confidence", 0.95)
+
+        # Store initial metadata in Database
+        await orchestrator._init_db_collections()
+        
+        # Insert/Update applications collection
+        app_doc = {
+            "application_id": app_id,
+            "business_name": payload.business_name,
+            "owner_name": payload.owner_name,
+            "country": "India",
+            "industry": payload.industry,
+            "years_in_business": payload.years_in_business,
+            "loan_amount": int(payload.loan_amount),
+            "revenue": int(payload.monthly_revenue * 12),
+            "existing_debt": 0,
+            "address": "123 Main St",
+            "phone": "+91 98765 43210",
+            "email": f"info@{payload.business_name.lower().replace(' ', '')}.com",
+            "website": f"www.{payload.business_name.lower().replace(' ', '')}.com",
+            "decision": "Pending"
+        }
+        await orchestrator.db.applications.update_one({"application_id": app_id}, {"$set": app_doc}, upsert=True)
+        
+        # Insert applicant profiles
+        await orchestrator.db.applicant_profiles.update_one(
+            {"application_id": app_id},
+            {"$set": {
+                "applicant_type": applicant_type,
+                "required_documents": required_docs,
+                "profile_confidence": profile_confidence
+            }},
+            upsert=True
+        )
+        
+        # Initialize timeline events in DB
+        stages = [
+            "Applicant Profiling",
+            "Application Intake",
+            "Document Verification",
+            "Fraud Intelligence",
+            "Business Validation",
+            "Risk Scoring",
+            "Decision Explainability"
+        ]
+        for s in stages:
+            status = "Completed" if s == "Applicant Profiling" else "Pending"
+            await orchestrator.db.application_timeline.update_one(
+                {"application_id": app_id, "stage": s},
+                {"$set": {
+                    "status": status,
+                    "timestamp": datetime.now().isoformat()
+                }},
+                upsert=True
+            )
+            
+        # Initialize document status records in DB
+        is_approved_demo = "Traders" in payload.business_name
+        status = "Verified" if is_approved_demo else "Pending"
+        for doc_type in required_docs:
+            file_name = f"{payload.business_name.lower().replace(' ', '_')}_{orchestrator._sanitize_doc_type(doc_type)}.pdf" if status == "Verified" else "N/A"
+            await orchestrator.db.documents.update_one(
+                {"application_id": app_id, "document_type": doc_type},
+                {"$set": {
+                    "upload_status": status,
+                    "file_name": file_name,
+                    "uploaded_at": datetime.now().isoformat() if status == "Verified" else "N/A"
+                }},
+                upsert=True
+            )
+            
+        return {
+            "application_id": app_id,
+            "applicant_type": applicant_type,
+            "required_documents": required_docs
+        }
+    except Exception as e:
+        logger.error(f"Error initializing application: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/upload-document")
+async def upload_document(
+    application_id: str = Form(...),
+    document_type: str = Form(...),
+    file: UploadFile = File(...)
+):
+    """
+    Accepts document uploads, validates file type and size, saves to disk,
+    and logs metadata to MongoDB.
+    """
+    logger.info(f"Uploading {document_type} for application {application_id}")
+    try:
+        # Check if application exists
+        app_profile = await orchestrator.db.applicant_profiles.find_one({"application_id": application_id})
+        if not app_profile:
+            raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
+            
+        # Validate file extension
+        _, ext = os.path.splitext(file.filename)
+        ext = ext.lower().strip('.')
+        if ext not in ['pdf', 'png', 'jpeg', 'jpg']:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: .{ext}. Allowed: PDF, PNG, JPEG, JPG")
+            
+        # Validate size
+        contents = await file.read()
+        size = len(contents)
+        if size > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+            
+        # Save file to uploads/{application_id}/
+        upload_dir = os.path.join(orchestrator._get_upload_dir(), application_id)
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        sanitized_doc_type = orchestrator._sanitize_doc_type(document_type)
+        filename = f"{sanitized_doc_type}.{ext}"
+        filepath = os.path.join(upload_dir, filename)
+        
+        with open(filepath, "wb") as f:
+            f.write(contents)
+            
+        # Update metadata in MongoDB
+        await orchestrator.db.documents.update_one(
+            {"application_id": application_id, "document_type": document_type},
+            {"$set": {
+                "upload_status": "Uploaded",
+                "file_name": filename,
+                "storage_path": filepath,
+                "uploaded_at": datetime.now().isoformat()
+            }},
+            upsert=True
+        )
+        
+        # Update Application Intake timeline stage to Completed if all documents uploaded
+        required_docs = app_profile.get("required_documents", [])
+        cursor = orchestrator.db.documents.find({"application_id": application_id})
+        uploaded_docs = await cursor.to_list(length=100)
+        uploaded_types = [d["document_type"] for d in uploaded_docs if d["upload_status"] == "Uploaded"]
+        
+        all_uploaded = all(doc in uploaded_types for doc in required_docs)
+        if all_uploaded:
+            await orchestrator._update_timeline(application_id, "Application Intake", "Completed")
+        else:
+            await orchestrator._update_timeline(application_id, "Application Intake", "In Progress")
+            
+        return {
+            "status": "success",
+            "document_type": document_type,
+            "file_name": filename
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading document: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/application-documents/{application_id}")
+async def get_application_documents(application_id: str):
+    """
+    Returns the dynamic checklist of required documents and their upload statuses.
+    """
+    logger.info(f"Fetching checklist for application {application_id}")
+    try:
+        app_profile = await orchestrator.db.applicant_profiles.find_one({"application_id": application_id})
+        if not app_profile:
+            raise HTTPException(status_code=404, detail="Application profile not found")
+            
+        required_docs = app_profile.get("required_documents", [])
+        cursor = orchestrator.db.documents.find({"application_id": application_id})
+        db_docs = await cursor.to_list(length=100)
+        
+        doc_map = {d["document_type"]: d for d in db_docs}
+        
+        checklist = []
+        for doc_type in required_docs:
+            db_doc = doc_map.get(doc_type, {})
+            checklist.append({
+                "document_type": doc_type,
+                "upload_status": db_doc.get("upload_status", "Pending"),
+                "file_name": db_doc.get("file_name", "N/A"),
+                "uploaded_at": db_doc.get("uploaded_at", "N/A")
+            })
+            
+        return checklist
+    except Exception as e:
+        logger.error(f"Error fetching checklist: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/analyze-loan", response_model=LoanAnalysisResponse)
 async def analyze_loan(payload: LoanAnalysisInput):
     """
@@ -47,8 +309,9 @@ async def analyze_loan(payload: LoanAnalysisInput):
             "monthly_revenue": payload.monthly_revenue,
             "industry": payload.industry,
             "loan_purpose": payload.loan_purpose,
-            "years_in_business": 5, # default/mock Operational parameters
-            "country": "India"      # default geographical zone
+            "years_in_business": payload.years_in_business, # pass operational parameter
+            "country": "India",      # default geographical zone
+            "application_id": payload.application_id
         }
         
         # Execute the orchestrator
@@ -71,7 +334,15 @@ async def analyze_loan(payload: LoanAnalysisInput):
             "loan_to_revenue_ratio": round(payload.loan_amount / payload.monthly_revenue, 2) if payload.monthly_revenue > 0 else 0.0,
             "reasoning_trace": result["reasoning_trace"],
             "audit_log": result["audit_log"],
-            "decision_explanation": result["decision_explanation"]
+            "decision_explanation": result["decision_explanation"],
+            "applicant_type": result.get("applicant_type", "Beginner Entrepreneur"),
+            "required_documents": result.get("required_documents", []),
+            "missing_documents": result.get("missing_documents", []),
+            "verified_documents": result.get("verified_documents", []),
+            "document_completeness": result.get("document_completeness", 0.0),
+            "upload_progress": result.get("upload_progress", 0.0),
+            "explainability_report": result.get("explainability_report", ""),
+            "timeline": result.get("timeline", [])
         }
         
         # Ensure reference ID makes sense
@@ -94,13 +365,16 @@ async def analyze_loan(payload: LoanAnalysisInput):
                 "loan_amount": payload.loan_amount,
                 "monthly_revenue": payload.monthly_revenue,
                 "industry": payload.industry,
-                "loan_purpose": payload.loan_purpose
+                "loan_purpose": payload.loan_purpose,
+                "years_in_business": payload.years_in_business
             },
+            "agent_0_output": result.get("agent_0_output", {}),
             "agent_1_output": result["agent_1_output"],
             "agent_2_output": result["agent_2_output"],
             "agent_3_output": result["agent_3_output"],
             "agent_4_output": result["agent_4_output"],
             "agent_5_output": result["agent_5_output"],
+            "agent_6_output": result.get("agent_6_output", {}),
             "orchestrator_decision": result["orchestrator_decision"],
             "final_response": final_resp
         }

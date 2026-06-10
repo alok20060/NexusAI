@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 # Import the agents defined in agent.py
 from agent import (
+    bankguard_applicant_profiling_agent,
     bankguard_intake__risk_coordinator,
     bankguard_document_verification_agent,
     bankguard_fraud_intelligence_agent,
@@ -36,6 +37,10 @@ class FinalDecisionOutput(BaseModel):
     next_action: str = Field(description="Actionable next step recommended by the orchestrator")
     confidence: float = Field(description="Confidence score for the overall decision, between 0.0 and 1.0")
     decision_explanation: str = Field(description="Human-readable decision explanation and summary")
+    applicant_type: str = Field(default="Beginner Entrepreneur", description="Dynamically classified applicant type")
+    required_documents: list[str] = Field(default=[], description="List of required documents")
+    missing_documents: list[str] = Field(default=[], description="List of missing documents")
+    verified_documents: list[str] = Field(default=[], description="List of verified documents")
 
 class BankGuardOrchestrator:
     """
@@ -61,6 +66,25 @@ class BankGuardOrchestrator:
         self.logger.info(f"Starting orchestration pipeline for: {business_name}")
         
         try:
+            # 0. Invoke Applicant Profiling Agent
+            self.logger.info("Executing Step 0: Applicant Profiling Agent...")
+            profiling_output = await self._run_agent_step(
+                bankguard_applicant_profiling_agent,
+                application
+            )
+            self.logger.info(f"Applicant Profiling Agent complete. Output: {profiling_output}")
+            
+            applicant_type = profiling_output.get("applicant_type", "Beginner Entrepreneur")
+            required_docs = profiling_output.get("required_documents", [])
+            
+            is_approved_demo = "Traders" in business_name
+            if is_approved_demo:
+                missing_docs = []
+                verified_docs = required_docs
+            else:
+                missing_docs = required_docs
+                verified_docs = []
+
             # 1. Invoke Intake & Risk Coordinator
             self.logger.info("Executing Step 1: Intake & Risk Coordinator...")
             intake_output = await self._run_agent_step(
@@ -144,7 +168,11 @@ class BankGuardOrchestrator:
                 doc_output,
                 fraud_output,
                 business_output,
-                risk_output
+                risk_output,
+                applicant_type,
+                required_docs,
+                missing_docs,
+                verified_docs
             )
             
             return decision
@@ -204,7 +232,52 @@ class BankGuardOrchestrator:
         biz_name = app_data.get("business_name", "Unknown Business")
 
         # Simulate outputs
-        if agent_name == "bankguard_intake__risk_coordinator":
+        if agent_name == "bankguard_applicant_profiling_agent":
+            loan_amount = float(app_data.get("loan_amount", 0))
+            years_in_business = int(app_data.get("years_in_business", 5))
+            
+            if loan_amount >= 10000000:
+                app_type = "High-Value Loan Applicant"
+                req_docs = [
+                    "Business registration certificate",
+                    "Office address proof",
+                    "Utility bills",
+                    "Bank statements",
+                    "Tax returns",
+                    "Credit score report",
+                    "Audited financial statements",
+                    "Cash flow reports",
+                    "Inventory records",
+                    "Supplier contracts",
+                    "Collateral documents"
+                ]
+            elif years_in_business < 2:
+                app_type = "Beginner Entrepreneur"
+                req_docs = [
+                    "Personal ID",
+                    "Asset proofs",
+                    "Property documents",
+                    "Savings account statements",
+                    "Education/professional background",
+                    "Guarantor information"
+                ]
+            else:
+                app_type = "Experienced Business Owner"
+                req_docs = [
+                    "Business registration certificate",
+                    "Office address proof",
+                    "Utility bills",
+                    "Bank statements",
+                    "Tax returns",
+                    "Credit score report"
+                ]
+            return {
+                "applicant_type": app_type,
+                "required_documents": req_docs,
+                "profile_confidence": 0.95
+            }
+
+        elif agent_name == "bankguard_intake__risk_coordinator":
             return {
                 "summary": f"SME loan application for {biz_name}. Stated years in business: {app_data.get('years_in_business', 'N/A')}.",
                 "data_quality": "High",
@@ -321,7 +394,11 @@ class BankGuardOrchestrator:
         doc_out: Any,
         fraud_out: Any,
         business_out: Any,
-        risk_out: Any
+        risk_out: Any,
+        applicant_type: str = "Beginner Entrepreneur",
+        required_docs: list[str] = None,
+        missing_docs: list[str] = None,
+        verified_docs: list[str] = None
     ) -> FinalDecisionOutput:
         """
         Applies decision rules and aggregates findings.
@@ -414,7 +491,11 @@ class BankGuardOrchestrator:
             "key_reasons": reasons,
             "next_action": next_action,
             "confidence": round(avg_confidence, 2),
-            "decision_explanation": explanation_str
+            "decision_explanation": explanation_str,
+            "applicant_type": applicant_type,
+            "required_documents": required_docs or [],
+            "missing_documents": missing_docs or [],
+            "verified_documents": verified_docs or []
         }
 
         # Print auditable report

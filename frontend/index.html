@@ -148,9 +148,9 @@ const Icon=({name,size=16,color='currentColor',className=''})=>{
 
 // ─── DEMO CASES ─────────────────────────────────────────────────────────────
 const DEMO_CASES=[
-  {id:'DEMO-01',label:'Healthy Approval',name:'ABC Traders Pvt Ltd',owner:'Rajesh Kumar',amount:500000,revenue:200000,industry:'Retail & FMCG',purpose:'Working capital expansion',expected:'Approve',color:'emerald',ratio:'2.5×',note:'Low ratio · clean fraud record · verified business'},
-  {id:'DEMO-02',label:'High Risk Ratio',name:'New Startup Ltd',owner:'Test User',amount:50000000,revenue:100000,industry:'Services & IT',purpose:'Expansion',expected:'Reject',color:'rose',ratio:'500×',note:'Loan-to-revenue 500× exceeds 100× ceiling'},
-  {id:'DEMO-03',label:'Fraud DB Match',name:'Fake Corp Ltd',owner:'Fraud User',amount:1000000,revenue:100000,industry:'General Trade',purpose:'Equipment purchase',expected:'Reject',color:'rose',ratio:'10×',note:'Matched fraud_cases record in MongoDB — FC_TEST_001'},
+  {id:'DEMO-01',label:'Healthy Approval',name:'ABC Traders Pvt Ltd',owner:'Rajesh Kumar',amount:500000,revenue:200000,years:5,industry:'Retail & FMCG',purpose:'Working capital expansion',expected:'Approve',color:'emerald',ratio:'2.5×',note:'Low ratio · clean fraud record · verified business'},
+  {id:'DEMO-02',label:'High Risk Ratio',name:'New Startup Ltd',owner:'Test User',amount:50000000,revenue:100000,years:1,industry:'Services & IT',purpose:'Expansion',expected:'Reject',color:'rose',ratio:'500×',note:'Loan-to-revenue 500× exceeds 100× ceiling'},
+  {id:'DEMO-03',label:'Fraud DB Match',name:'Fake Corp Ltd',owner:'Fraud User',amount:1000000,revenue:100000,years:3,industry:'General Trade',purpose:'Equipment purchase',expected:'Reject',color:'rose',ratio:'10×',note:'Matched fraud_cases record in MongoDB — FC_TEST_001'},
 ];
 
 // ─── GAUGE COMPONENT (SVG semicircle) ───────────────────────────────────────
@@ -237,11 +237,13 @@ const BarChart=({data,height=80})=>{
 
 // ─── AGENT TIMELINE ──────────────────────────────────────────────────────────
 const AGENTS=[
+  {id:0,name:'Applicant Profiling',desc:'Classifies applicant and determines required documents',icon:'user',color:'#A7F3D0'},
   {id:1,name:'Intake & Risk Coordinator',desc:'Parses data, normalizes inputs',icon:'zap',color:'#3B82F6'},
-  {id:2,name:'Document Verification',desc:'Verifies document completeness',icon:'audit',color:'#8B5CF6'},
+  {id:2,name:'Document Verification',desc:'Verifies document checklist and completeness',icon:'audit',color:'#8B5CF6'},
   {id:3,name:'Fraud Intelligence',desc:'Checks MongoDB fraud_cases',icon:'shield',color:'#EF4444'},
   {id:4,name:'Business Validation',desc:'Validates business registry',icon:'building',color:'#06B6D4'},
   {id:5,name:'Risk Scoring',desc:'Evaluates creditworthiness',icon:'chart',color:'#F59E0B'},
+  {id:6,name:'Decision Explainability',desc:'Converts credit output into user justifications',icon:'brain',color:'#EC4899'},
 ];
 
 const AgentTimeline=({stage,results})=>
@@ -294,14 +296,14 @@ const Select=({label,options,value,onChange})=>
 
 // ─── FORM COMPONENT ──────────────────────────────────────────────────────────
 const LoanForm=({onSubmit,loading})=>{
-  const [form,setForm]=useState({biz:'',owner:'',amount:'',revenue:'',industry:'',purpose:''});
+  const [form,setForm]=useState({biz:'',owner:'',amount:'',revenue:'',years:'5',industry:'',purpose:''});
   const [errors,setErrors]=useState({});
   const [showDemo,setShowDemo]=useState(false);
   const [activeDemo,setActiveDemo]=useState(null);
   const upd=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
   const loadDemo=idx=>{
     const c=DEMO_CASES[idx];
-    setForm({biz:c.name,owner:c.owner,amount:String(c.amount),revenue:String(c.revenue),industry:c.industry,purpose:c.purpose});
+    setForm({biz:c.name,owner:c.owner,amount:String(c.amount),revenue:String(c.revenue),years:String(c.years||5),industry:c.industry,purpose:c.purpose});
     setActiveDemo(idx);setErrors({});
   };
   const validate=()=>{
@@ -310,6 +312,7 @@ const LoanForm=({onSubmit,loading})=>{
     if(!form.owner.trim())e.owner='Required';
     if(!form.amount||isNaN(form.amount)||+form.amount<10000)e.amount='Min ₹10,000';
     if(!form.revenue||isNaN(form.revenue)||+form.revenue<1000)e.revenue='Required';
+    if(!form.years||isNaN(form.years)||+form.years<0)e.years='Min 0';
     setErrors(e);return Object.keys(e).length===0;
   };
   const submit=()=>{if(validate())onSubmit(form);};
@@ -345,17 +348,15 @@ const LoanForm=({onSubmit,loading})=>{
       React.createElement(Field,{label:'Owner / Promoter',placeholder:'Full name',half:false,value:form.owner,onChange:upd('owner'),error:errors.owner}),
       React.createElement(Field,{label:'Loan Amount (₹)',placeholder:'e.g. 500000',type:'number',half:true,value:form.amount,onChange:upd('amount'),error:errors.amount}),
       React.createElement(Field,{label:'Monthly Revenue (₹)',placeholder:'e.g. 200000',type:'number',half:true,value:form.revenue,onChange:upd('revenue'),error:errors.revenue}),
-      React.createElement('div',null,
+      React.createElement(Field,{label:'Business Age (Years)',placeholder:'e.g. 5',type:'number',half:true,value:form.years,onChange:upd('years'),error:errors.years}),
+      React.createElement('div',{style:{gridColumn:'span 1'}},
         React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6}}, 'Industry Sector'),
         React.createElement('select',{className:'input-field',value:form.industry||'',onChange:upd('industry')},
           React.createElement('option',{value:''},'Select sector...'),
           ['Retail & FMCG','Manufacturing','Services & IT','Agriculture & Allied','Healthcare','Hospitality','General Trade'].map(o=>React.createElement('option',{key:o,value:o},o))
         )
       ),
-      React.createElement('div',null,
-        React.createElement('label',{style:{display:'block',fontSize:12,fontWeight:500,color:'rgba(255,255,255,0.5)',marginBottom:6}},'Loan Purpose'),
-        React.createElement('input',{className:'input-field',placeholder:'e.g. Working capital / Equipment...',value:form.purpose||'',onChange:upd('purpose')})
-      )
+      React.createElement(Field,{label:'Loan Purpose',placeholder:'e.g. Working capital / Equipment...',half:false,value:form.purpose,onChange:upd('purpose')})
     ),
     // Summary preview
     (form.biz||form.amount)&&React.createElement('div',{style:{background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:12,padding:12,marginBottom:16,display:'flex',gap:16,flexWrap:'wrap'}},
@@ -499,15 +500,17 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
           ),
           React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.4)'}},`Confidence: ${conf}%`)
         ),
-        // Key reasons
-        reasons.length>0
-          ?reasons.map((r,i)=>React.createElement('div',{key:i,className:'finding-item'},
-              React.createElement('div',{style:{width:18,height:18,borderRadius:'50%',background:isApproved?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)',border:`1px solid ${isApproved?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
-                React.createElement(Icon,{name:isApproved?'check':'x',size:10,color:isApproved?'#10B981':'#EF4444'})
-              ),
-              React.createElement('span',{style:{fontSize:11,color:'rgba(255,255,255,0.6)',lineHeight:1.5}},r)
-            ))
-          :React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.3)'}},explanation||'Analysis complete.')
+        // Explainability Report / Key reasons
+        fr.explainability_report
+          ? React.createElement('pre',{style:{fontSize:11,color:'rgba(255,255,255,0.7)',lineHeight:1.6,fontFamily:'inherit',whiteSpace:'pre-wrap',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.04)',borderRadius:8,padding:12}},fr.explainability_report)
+          : (reasons.length>0
+              ?reasons.map((r,i)=>React.createElement('div',{key:i,className:'finding-item'},
+                  React.createElement('div',{style:{width:18,height:18,borderRadius:'50%',background:isApproved?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)',border:`1px solid ${isApproved?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)'}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+                    React.createElement(Icon,{name:isApproved?'check':'x',size:10,color:isApproved?'#10B981':'#EF4444'})
+                  ),
+                  React.createElement('span',{style:{fontSize:11,color:'rgba(255,255,255,0.6)',lineHeight:1.5}},r)
+                ))
+              :React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.3)'}},explanation||'Analysis complete.'))
       ),
 
       // Agent Timeline
@@ -516,7 +519,20 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
           React.createElement(Icon,{name:'cpu',size:13,color:'rgba(255,255,255,0.3)'}),
           '⬡ Agent Pipeline'
         ),
-        React.createElement(AgentTimeline,{stage:5,results:[1,2,3,4,5]}),
+        React.createElement(AgentTimeline,{stage:7,results:[0,1,2,3,4,5,6]}),
+        // Underwriting Timeline Stages with status dots & timestamps
+        React.createElement('div',{style:{marginTop:14,paddingTop:14,borderTop:'1px solid rgba(255,255,255,0.06)',display:'flex',flexDirection:'column',gap:8}},
+          React.createElement('div',{style:{fontSize:9,letterSpacing:'0.12em',color:'rgba(255,255,255,0.25)',marginBottom:4,textTransform:'uppercase'}}, 'Underwriting Timeline'),
+          (fr.timeline||[]).map((t,i)=>React.createElement('div',{key:i,style:{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:10}},
+            React.createElement('div',{style:{display:'flex',alignItems:'center',gap:6}},
+              React.createElement('div',{style:{width:6,height:6,borderRadius:'50%',background:t.status==='Completed'?'#10B981':t.status==='In Progress'?'#3B82F6':'#6B7280'}}),
+              React.createElement('span',{style:{color:t.status==='Completed'?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)'}},t.stage)
+            ),
+            React.createElement('span',{style:{fontSize:9,color:'rgba(255,255,255,0.25)',fontFamily:'JetBrains Mono, monospace'}},
+              t.timestamp ? new Date(t.timestamp).toLocaleTimeString('en-IN') : '—'
+            )
+          ))
+        ),
         // Audit entries
         fr.audit_log&&React.createElement('div',{style:{marginTop:14,paddingTop:14,borderTop:'1px solid rgba(255,255,255,0.06)'}},
           React.createElement('div',{style:{fontSize:9,letterSpacing:'0.12em',color:'rgba(255,255,255,0.25)',marginBottom:8,textTransform:'uppercase'}}, 'Audit Log'),
@@ -526,6 +542,47 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
               React.createElement('span',{style:{fontSize:9,color:'rgba(255,255,255,0.3)'}},l.message)
             ))
           )
+        )
+      )
+    ),
+
+    // ── ADAPTIVE UNDERWRITING CHECKLIST ──────────────────────────────────────
+    React.createElement('div',{className:'metric-card'},
+      React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:16,textTransform:'uppercase',display:'flex',alignItems:'center',gap:8}},
+        React.createElement(Icon,{name:'shield',size:13,color:'rgba(255,255,255,0.3)'}),
+        '⬡ Adaptive Underwriting Checklist'
+      ),
+      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,paddingBottom:12,borderBottom:'1px solid rgba(255,255,255,0.06)'}},
+        React.createElement('div',null,
+          React.createElement('div',{style:{fontSize:14,fontWeight:700,color:'#60A5FA'}},'Applicant Profile: '+(fr.applicant_type||'Beginner Entrepreneur')),
+          React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.4)'}},'Required verification materials dynamically generated by Agent 0')
+        ),
+        React.createElement('div',{className:'badge badge-purple',style:{fontSize:11}},
+          (fr.required_documents||[]).length+' Documents Required'
+        )
+      ),
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}},
+        // Required & Verified list
+        React.createElement('div',null,
+          React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'#10B981',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}},'✓ Verified Documents'),
+          (fr.verified_documents&&fr.verified_documents.length>0)
+            ?fr.verified_documents.map((d,i)=>React.createElement('div',{key:i,style:{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius:8,background:'rgba(16,185,129,0.06)',border:'1px solid rgba(16,185,129,0.2)',marginBottom:6}},
+                React.createElement(Icon,{name:'check',size:12,color:'#10B981'}),
+                React.createElement('span',{style:{fontSize:11,color:'rgba(255,255,255,0.7)'}},d),
+                React.createElement('span',{className:'badge badge-green',style:{marginLeft:'auto',fontSize:9,padding:'2px 6px'}},'Verified')
+              ))
+            :React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.3)',fontStyle:'italic',padding:'8px 12px'}},'No documents verified yet.')
+        ),
+        // Missing list
+        React.createElement('div',null,
+          React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'#EF4444',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}},'✕ Missing Documents'),
+          (fr.missing_documents&&fr.missing_documents.length>0)
+            ?fr.missing_documents.map((d,i)=>React.createElement('div',{key:i,style:{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderRadius:8,background:'rgba(239,68,68,0.06)',border:'1px solid rgba(239,68,68,0.2)',marginBottom:6}},
+                React.createElement(Icon,{name:'x',size:12,color:'#EF4444'}),
+                React.createElement('span',{style:{fontSize:11,color:'rgba(255,255,255,0.7)'}},d),
+                React.createElement('span',{className:'badge badge-red',style:{marginLeft:'auto',fontSize:9,padding:'2px 6px'}},'Missing')
+              ))
+            :React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.3)',fontStyle:'italic',padding:'8px 12px'}},'All documents successfully verified.')
         )
       )
     ),
@@ -560,6 +617,145 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
 };
 
 // ─── PIPELINE VIEW ───────────────────────────────────────────────────────────
+const UploadPanel=({applicationId,applicantType,requiredDocs,onBack,onSubmit})=>{
+  const [checklist,setChecklist]=useState([]);
+  const [uploading,setUploading]=useState({});
+  const [loading,setLoading]=useState(true);
+
+  const fetchChecklist=useCallback(async()=>{
+    try{
+      const res=await fetch(BACKEND+'/application-documents/'+applicationId);
+      if(res.ok){
+        const data=await res.json();
+        setChecklist(data);
+      }
+    }catch(e){
+      console.error('Error fetching checklist:',e);
+    }finally{
+      setLoading(false);
+    }
+  },[applicationId]);
+
+  useEffect(()=>{
+    fetchChecklist();
+  },[fetchChecklist]);
+
+  const handleUpload=async(docType,file)=>{
+    if(!file)return;
+    setUploading(prev=>({...prev,[docType]:true}));
+    try{
+      const formData=new FormData();
+      formData.append('application_id',applicationId);
+      formData.append('document_type',docType);
+      formData.append('file',file);
+      
+      const res=await fetch(BACKEND+'/upload-document',{
+        method:'POST',
+        body:formData
+      });
+      if(!res.ok){
+        const errData=await res.json().catch(()=>({}));
+        throw new Error(errData.detail || 'Upload failed');
+      }
+      await fetchChecklist();
+    }catch(e){
+      console.error(e);
+      alert('Upload failed: '+e.message);
+    }finally{
+      setUploading(prev=>({...prev,[docType]:false}));
+    }
+  };
+
+  const totalDocs=checklist.length;
+  const uploadedDocsCount=checklist.filter(d=>d.upload_status==='Uploaded').length;
+  const progressPercent=totalDocs > 0 ? Math.round((uploadedDocsCount/totalDocs)*100) : 0;
+
+  return React.createElement('div',{className:'metric-card',style:{padding:28,maxWidth:700,margin:'0 auto'}},
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
+      React.createElement('div',null,
+        React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.12em',textTransform:'uppercase'}},'Step 2 of 3 · Verification uploads'),
+        React.createElement('h3',{style:{fontSize:20,fontWeight:800,color:'#fff',marginTop:4}},'Upload Supporting Documents')
+      ),
+      React.createElement('div',{className:'badge badge-purple',style:{fontSize:11}},`Application ID: ${applicationId}`)
+    ),
+    React.createElement('div',{style:{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:16,marginBottom:20}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,color:'#60A5FA'}},`Applicant Profile: ${applicantType}`),
+      React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.4)',marginTop:4}},'Underwriting criteria requires the following documents. Please upload files in PDF, PNG, JPG, or JPEG format (max 10MB).')
+    ),
+    
+    // Progress Bar
+    React.createElement('div',{style:{marginBottom:24}},
+      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',fontSize:12,fontWeight:600,color:'rgba(255,255,255,0.5)',marginBottom:6}},
+        React.createElement('span',null,'Checklist Progress'),
+        React.createElement('span',null,`${uploadedDocsCount} of ${totalDocs} uploaded (${progressPercent}%)`)
+      ),
+      React.createElement('div',{style:{width:'100%',height:8,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}},
+        React.createElement('div',{style:{width:`${progressPercent}%`,height:'100%',background:'linear-gradient(90deg,#2563EB,#7C3AED)',borderRadius:4,transition:'width 0.3s ease'}})
+      )
+    ),
+    
+    // Documents list
+    React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:12,marginBottom:24}},
+      checklist.map((doc,idx)=>{
+        const isUploaded = doc.upload_status === 'Uploaded';
+        const isUploading = uploading[doc.document_type];
+        
+        return React.createElement('div',{key:idx,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 18px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12}},
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12}},
+            React.createElement('div',{style:{width:32,height:32,borderRadius:8,background:isUploaded?'rgba(16,185,129,0.1)':'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center'}},
+              React.createElement(Icon,{name:isUploaded?'check':'x',size:16,color:isUploaded?'#10B981':'rgba(255,255,255,0.3)'})
+            ),
+            React.createElement('div',null,
+              React.createElement('div',{style:{fontSize:13,fontWeight:600,color:'#fff'}},doc.document_type),
+              React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.4)',marginTop:2}},
+                isUploaded ? `✓ File: ${doc.file_name}` : '✗ File missing'
+              )
+            )
+          ),
+          
+          React.createElement('div',null,
+            isUploading 
+              ? React.createElement('span',{style:{fontSize:12,color:'rgba(255,255,255,0.4)',display:'flex',alignItems:'center',gap:6}},
+                  React.createElement(Icon,{name:'loader',size:14,className:'status-dot-pulse'}), 'Uploading...'
+                )
+              : React.createElement('label',{style:{cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,padding:'6px 12px',borderRadius:8,background:isUploaded?'rgba(255,255,255,0.06)':'#2563EB',color:'#fff',fontSize:12,fontWeight:600,border:isUploaded?'1px solid rgba(255,255,255,0.12)':'none',transition:'all 0.2s'}},
+                  React.createElement(Icon,{name:'download',size:12,color:'#fff'}),
+                  isUploaded ? 'Re-upload' : 'Upload File',
+                  React.createElement('input',{
+                    type:'file',
+                    style:{display:'none'},
+                    accept:'.pdf,.png,.jpg,.jpeg',
+                    onChange:(e)=>{
+                      if(e.target.files && e.target.files[0]){
+                        handleUpload(doc.document_type,e.target.files[0]);
+                      }
+                    }
+                  })
+                )
+          )
+        );
+      })
+    ),
+    
+    // Actions
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:20}},
+      React.createElement('button',{
+        onClick:onBack,
+        className:'btn-secondary',
+        style:{padding:'10px 20px',fontSize:13}
+      },'Back to Details'),
+      React.createElement('button',{
+        onClick:()=>onSubmit(applicationId),
+        className:'btn-primary',
+        style:{padding:'10px 24px',fontSize:13,display:'inline-flex',alignItems:'center',gap:8}
+      },
+        React.createElement(Icon,{name:'zap',size:14,color:'#fff'}),
+        'Submit Application for Underwriting'
+      )
+    )
+  );
+};
+
 const PipelineView=({stage,form,startTime})=>{
   const [elapsed,setElapsed]=useState(0);
   useEffect(()=>{
@@ -676,7 +872,7 @@ const TopBar=({isConnected})=>{
 // ─── ROOT APP ────────────────────────────────────────────────────────────────
 const App=()=>{
   const [nav,setNav]=useState('dashboard');
-  const [screen,setScreen]=useState('form'); // form | pipeline | results
+  const [screen,setScreen]=useState('form'); // form | upload | pipeline | results
   const [loading,setLoading]=useState(false);
   const [pipelineStage,setPipelineStage]=useState(0);
   const [apiData,setApiData]=useState(null);
@@ -684,6 +880,11 @@ const App=()=>{
   const [startTime,setStartTime]=useState(null);
   const [elapsed,setElapsed]=useState(0);
   const [isConnected,setIsConnected]=useState(null);
+  
+  // Phase 2 Wizard states
+  const [applicationId,setApplicationId]=useState('');
+  const [applicantType,setApplicantType]=useState('');
+  const [requiredDocs,setRequiredDocs]=useState([]);
 
   // Connection check
   useEffect(()=>{
@@ -704,24 +905,68 @@ const App=()=>{
   const handleSubmit=async(form)=>{
     setFormData(form);
     setLoading(true);
+    try{
+      const payload={
+        business_name:form.biz,
+        owner_name:form.owner,
+        loan_amount:+form.amount,
+        monthly_revenue:+form.revenue,
+        years_in_business:+form.years||5,
+        industry:form.industry||'General Trade',
+        loan_purpose:form.purpose||'Working capital'
+      };
+      const res=await fetch(BACKEND+'/initialize-application',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(!res.ok)throw new Error('Initialization error '+res.status);
+      const data=await res.json();
+      setApplicationId(data.application_id);
+      setApplicantType(data.applicant_type);
+      setRequiredDocs(data.required_documents);
+      setScreen('upload');
+    }catch(e){
+      console.error(e);
+      alert('Initialization failed: '+e.message);
+    }finally{
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitAnalysis=async(appId)=>{
+    setLoading(true);
     setScreen('pipeline');
     setPipelineStage(0);
     const t0=Date.now();
     setStartTime(t0);
-    // Animate agents
+    // Animate agents (7 stages)
     const runAgents=async()=>{
-      for(let i=0;i<5;i++){
+      for(let i=0;i<7;i++){
         setPipelineStage(i);
-        await new Promise(r=>setTimeout(r,600));
+        await new Promise(r=>setTimeout(r,650));
       }
     };
     runAgents();
     try{
-      const payload={business_name:form.biz,owner_name:form.owner,loan_amount:+form.amount,monthly_revenue:+form.revenue,industry:form.industry||'General Trade',loan_purpose:form.purpose||'Working capital'};
-      const res=await fetch(BACKEND+'/analyze-loan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const payload={
+        business_name:formData.biz,
+        owner_name:formData.owner,
+        loan_amount:+formData.amount,
+        monthly_revenue:+formData.revenue,
+        years_in_business:+formData.years||5,
+        industry:formData.industry||'General Trade',
+        loan_purpose:formData.purpose||'Working capital',
+        application_id:appId
+      };
+      const res=await fetch(BACKEND+'/analyze-loan',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
       if(!res.ok)throw new Error('API error '+res.status);
       const data=await res.json();
-      setPipelineStage(5);
+      setPipelineStage(7);
       await new Promise(r=>setTimeout(r,600));
       setApiData(data);
       setElapsed(Date.now()-t0);
@@ -729,7 +974,7 @@ const App=()=>{
     }catch(e){
       console.error(e);
       alert('Backend error: '+e.message);
-      setScreen('form');
+      setScreen('upload');
     }finally{
       setLoading(false);
     }
@@ -737,6 +982,7 @@ const App=()=>{
 
   const handleReset=()=>{
     setScreen('form');setApiData(null);setPipelineStage(0);setElapsed(0);
+    setApplicationId('');setApplicantType('');setRequiredDocs([]);
   };
 
   // Nav handler — only switches between real screens
@@ -791,6 +1037,16 @@ const App=()=>{
             ),
             React.createElement(LoanForm,{onSubmit:handleSubmit,loading})
           )
+        ),
+        // Upload screen
+        screen==='upload'&&React.createElement('div',{style:{maxWidth:700,margin:'0 auto'}},
+          React.createElement(UploadPanel,{
+            applicationId,
+            applicantType,
+            requiredDocs,
+            onBack:()=>setScreen('form'),
+            onSubmit:handleSubmitAnalysis
+          })
         ),
         // Pipeline screen
         screen==='pipeline'&&React.createElement('div',{style:{maxWidth:700,margin:'0 auto'}},

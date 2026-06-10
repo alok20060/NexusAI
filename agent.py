@@ -23,6 +23,28 @@ class RiskScoringOutput(BaseModel):
     loan_to_revenue_ratio: float = Field(description="The calculated loan-to-revenue ratio")
 
 
+class ApplicantProfilingOutput(BaseModel):
+    applicant_type: str = Field(description="Classified applicant type: 'Beginner Entrepreneur', 'Experienced Business Owner', or 'High-Value Loan Applicant'")
+    required_documents: list[str] = Field(description="Dynamic checklist of required documents based on profile")
+    profile_confidence: float = Field(description="Confidence of profiling, between 0.0 and 1.0")
+
+class DocumentVerificationOutput(BaseModel):
+    document_completeness: float = Field(description="Completeness of documents uploaded (0.0 to 1.0)")
+    verified_documents: list[str] = Field(description="List of verified documents")
+    missing_documents: list[str] = Field(description="List of missing documents")
+    unsupported_documents: list[str] = Field(description="List of unsupported or corrupted documents")
+
+class ExplainabilityOutput(BaseModel):
+    explainability_report: str = Field(description="Human-readable decision explanation with ✓ and ✗ markers")
+
+bankguard_applicant_profiling_agent = LlmAgent(
+  name='bankguard_applicant_profiling_agent',
+  model='gemini-2.5-flash',
+  description='Applicant Profiling Agent classifies the applicant into a specific tier and dynamically decides required documents.',
+  instruction='You are Applicant Profiling Agent. Based on the loan amount, years in operation, and credit history, classify the applicant into Beginner Entrepreneur, Experienced Business Owner, or High-Value Loan Applicant and determine the required documents checklist.',
+  tools=[]
+)
+
 bankguard_intake__risk_coordinator = LlmAgent(
   name='bankguard_intake__risk_coordinator',
   model='gemini-2.5-flash',
@@ -59,12 +81,14 @@ bankguard_document_verification_agent = LlmAgent(
   name='bankguard_document_verification_agent',
   model='gemini-2.5-flash',
   description=(
-      'NexusAI-NexusAI-BankGuard Document Verification Agent verifies the completeness, consistency, and authenticity of documents submitted with an SME loan application. It compares information across documents and against the application form to identify mismatches, missing information, and potential verification concerns.'
+      'NexusAI-NexusAI-BankGuard Document Verification Agent verifies the existence, supported file type, size, and corruption status of documents submitted with an SME loan application.'
   ),
   sub_agents=[],
-  instruction='You are NexusAI-NexusAI-BankGuard Document Verification Agent.\n\nYour responsibility is to verify that all submitted documents are complete, consistent, and aligned with the loan application.\n\nAnalyze:\n- Loan application details\n- Identity documents\n- Business registration documents\n- Bank statements\n- Tax documents\n- Address proofs\n- Supporting business documents\n\nPerform the following checks:\n\nDOCUMENT COMPLETENESS\n- Verify required documents are present.\n- Identify missing or incomplete documents.\n\nIDENTITY CONSISTENCY\n- Compare owner names across all documents.\n- Check for spelling variations or mismatches.\n\nBUSINESS CONSISTENCY\n- Verify business name consistency.\n- Verify registration details consistency.\n- Verify business address consistency.\n\nFINANCIAL CONSISTENCY\n- Compare declared revenue against financial documents.\n- Check whether financial figures appear consistent.\n\nDATE VALIDATION\n- Verify document validity dates.\n- Identify expired documents.\n\nDOCUMENT QUALITY\n- Check for missing pages.\n- Check for incomplete fields.\n- Identify suspicious formatting inconsistencies.\n\nRules:\n1. Do not perform fraud analysis.\n2. Do not assign repayment risk.\n3. Do not make approval or rejection decisions.\n4. Report only factual findings.\n5. Explain every issue found.\n\nOutput format:\n\nDOCUMENT VERIFICATION SUMMARY\n\nDOCUMENT STATUS\n- Complete\n- Partially Complete\n- Incomplete\n\nDOCUMENTS REVIEWED\n- List of documents\n\nMATCH CHECKS\n- Name Match: Pass / Fail\n- Address Match: Pass / Fail\n- Registration Match: Pass / Fail\n- Financial Match: Pass / Fail\n\nISSUES FOUND\n- Detailed list of inconsistencies\n\nPOSITIVE FINDINGS\n- Consistent information detected\n\nVERIFICATION RESULT\n- Pass\n- Needs Review\n- Failed Verification\n\nCONFIDENCE LEVEL\n- Percentage\n\nNEXT STEP\n- Forward to Fraud Intelligence Agent\n- Request Additional Documents',
+  instruction='You are NexusAI-NexusAI-BankGuard Document Verification Agent.\n\nYour responsibility is to check if required documents exist, are of a supported file format (PDF, PNG, JPEG, JPG), have a valid file size, and are not corrupted. You do NOT perform OCR and do NOT parse document contents. Report document completeness metrics factually.',
   tools=[],
+  output_schema=DocumentVerificationOutput,
 )
+
 bankguard_fraud_intelligence_agent = LlmAgent(
   name='bankguard_fraud_intelligence_agent',
   model='gemini-2.5-flash',
@@ -75,6 +99,7 @@ bankguard_fraud_intelligence_agent = LlmAgent(
   tools=[query_mcp_fraud_cases],
   instruction='You are NexusAI-NexusAI-BankGuard Fraud Intelligence Agent.\n\nYour responsibility is to identify potential fraud risks in SME loan applications.\n\nYou may use the MCP fraud_cases query tool to inspect known fraud reports and compare suspicious case data.\n\nAnalyze:\n- Loan application details\n- Intake & Risk Coordinator output\n- Document Verification Agent output\n\nLook for the following fraud indicators:\n\nIDENTITY RISKS\n- Mismatched names\n- Inconsistent personal information\n- Suspicious contact information\n- Duplicate identities\n\nBUSINESS RISKS\n- Unusual business details\n- Contradictory information\n- Unrealistic business claims\n- Newly established business requesting unusually large loans\n\nFINANCIAL RISKS\n- Revenue inconsistent with loan amount\n- Sudden or unrealistic growth claims\n- Suspicious financial patterns\n- Inconsistent financial information\n\nAPPLICATION RISKS\n- Missing critical information\n- Repeated modifications to application details\n- Multiple suspicious inconsistencies\n\nDOCUMENT RISKS\n- Conflicting information between documents\n- Suspicious formatting anomalies\n- Missing supporting evidence\n\nRules:\n1. Do not declare fraud with certainty.\n2. Report evidence-based concerns only.\n3. Explain every fraud signal detected.\n4. Highlight both positive and negative indicators.\n5. Do not make the final approval decision.\n6. Do not calculate repayment risk.\n\nOutput format:\n\nFRAUD INTELLIGENCE SUMMARY\n\nFRAUD RISK LEVEL\n- Low\n- Medium\n- High\n\nFRAUD SIGNALS DETECTED\n- Signal\n- Evidence\n- Severity\n\nANOMALIES FOUND\n- List of suspicious findings\n\nPOSITIVE LEGITIMACY SIGNALS\n- Evidence supporting authenticity\n\nINVESTIGATION PRIORITY\n- Low\n- Medium\n- High\n\nRECOMMENDED ACTION\n- Continue Processing\n- Additional Verification Required\n- Manual Review Required\n\nCONFIDENCE LEVEL\n- Percentage',
 )
+
 bankguard_business_validation_agent = LlmAgent(
   name='bankguard_business_validation_agent',
   model='gemini-2.5-flash',
@@ -108,6 +133,7 @@ bankguard_business_validation_agent = LlmAgent(
   tools=[get_business_history],
   output_schema=BusinessValidationOutput,
 )
+
 bankguard_risk_scoring_agent = LlmAgent(
   name='bankguard_risk_scoring_agent',
   model='gemini-2.5-flash',
@@ -163,13 +189,23 @@ bankguard_risk_scoring_agent = LlmAgent(
   tools=[get_historical_loan_data],
   output_schema=RiskScoringOutput,
 )
+
+bankguard_explainability_agent = LlmAgent(
+  name='bankguard_explainability_agent',
+  model='gemini-2.5-flash',
+  description='NexusAI-BankGuard Explainability Agent converts technical credit decision details into reader-friendly justifications.',
+  instruction='You are Explainability Agent. Your responsibility is to take the final recommendation, risk factors, and verification results and produce a clean, human-readable justification using ✓ for positive signals and ✗ for issues/red flags.',
+  tools=[],
+  output_schema=ExplainabilityOutput,
+)
+
 root_agent = LlmAgent(
   name='BankGuard_Orchestrator',
   model='gemini-3.5-flash',
   description=(
       'NexusAI-NexusAI-BankGuard Orchestrator coordinates the full SME loan intelligence workflow. It receives the loan application, routes data to specialist agents, collects their outputs, combines findings, applies final decision rules, and generates a transparent risk report with evidence and next actions.'
   ),
-  sub_agents=[bankguard_intake__risk_coordinator, bankguard_document_verification_agent, bankguard_fraud_intelligence_agent, bankguard_business_validation_agent, bankguard_risk_scoring_agent],
-  instruction='You are NexusAI-NexusAI-BankGuard Orchestrator.\n\nYour role is to coordinate the entire loan assessment workflow. You do not perform deep fraud analysis, document verification, business validation, or repayment scoring yourself. Instead, you manage the specialist agents and produce the final decision report.\n\nYour responsibilities:\n\n1. Receive the SME loan application and related documents.\n2. Send relevant data to each specialist agent.\n3. Collect and organize outputs from all agents.\n4. Combine findings into one clear assessment.\n5. Apply final decision logic based on agent outputs.\n6. Generate a transparent audit trail.\n7. Produce a final recommendation for a loan officer or reviewer.\n8. Do not invent evidence.\n9. Do not override specialist agents without clear justification.\n10. Keep the final output structured, concise, and evidence-based.\n\nUse the following agent outputs:\n- Intake & Risk Coordinator\n- Document Verification Agent\n- Fraud Intelligence Agent\n- Business Validation Agent\n- Risk Scoring Agent\n\nFinal output format:\n\nEXECUTIVE SUMMARY\n- Short overview of the application\n\nAGENT FINDINGS\n- Agent 1 summary\n- Agent 2 summary\n- Agent 3 summary\n- Agent 4 summary\n- Agent 5 summary\n\nFINAL RISK VIEW\n- Fraud Risk\n- Business Legitimacy Risk\n- Repayment Risk\n\nFINAL RECOMMENDATION\n- Approve\n- Manual Review\n- Reject\n\nKEY REASONS\n- Main positive signals\n- Main concerns\n\nAUDIT TRAIL\n- What checks were performed\n- What evidence was used\n- Why the final decision was made\n\nNEXT ACTION\n- Approve\n- Request more documents\n- Escalate to human officer\n- Reject',
+  sub_agents=[bankguard_intake__risk_coordinator, bankguard_document_verification_agent, bankguard_fraud_intelligence_agent, bankguard_business_validation_agent, bankguard_risk_scoring_agent, bankguard_explainability_agent],
+  instruction='You are NexusAI-NexusAI-BankGuard Orchestrator.\n\nYour role is to coordinate the entire loan assessment workflow. You do not perform deep fraud analysis, document verification, business validation, or repayment scoring yourself. Instead, you manage the specialist agents and produce the final decision report.',
   tools=[],
 )
