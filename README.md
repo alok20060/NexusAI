@@ -9,7 +9,7 @@
 ## 🌐 Live Demo
 
 **🔗 NexusAI BankGuard**
-👉 https://your-vercel-url.vercel.app
+👉 https://nexus-ai-5n2b.vercel.app/
 
 *(AI-powered SME lending and fraud detection platform)*
 
@@ -298,6 +298,8 @@ NexusAI BankGuard transforms traditional underwriting into a transparent, explai
 # 👨‍💻 Authors
 
 ### Alok VK
+###Akkshay GV
+###Vighensh Ganji
 
 Engineering Student | AI & ML Enthusiast
 
