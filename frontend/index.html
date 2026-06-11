@@ -733,7 +733,7 @@ const LoanForm=({onSubmit,loading})=>{
 };
 
 // ─── RESULTS DASHBOARD ───────────────────────────────────────────────────────
-const ResultsDashboard=({data,form,elapsed,onReset})=>{
+const ResultsDashboard=({data,form,elapsed,onReset,isDemo})=>{
   const fr=data.final_response||{};
   const a3=data.agent_3_output||{};
   const a4=data.agent_4_output||{};
@@ -1146,7 +1146,7 @@ const ResultsDashboard=({data,form,elapsed,onReset})=>{
     ),
 
     // ── ADAPTIVE UNDERWRITING CHECKLIST ──────────────────────────────────────
-    React.createElement('div',{className:'metric-card'},
+    !isDemo && React.createElement('div',{className:'metric-card'},
       React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',marginBottom:16,textTransform:'uppercase',display:'flex',alignItems:'center',gap:8}},
         React.createElement(Icon,{name:'shield',size:13,color:'rgba(255,255,255,0.3)'}),
         '⬡ Adaptive Underwriting Checklist'
@@ -2093,7 +2093,12 @@ const App=()=>{
       setApplicationId(data.application_id);
       setApplicantType(data.applicant_type);
       setRequiredDocs(data.required_documents);
-      setScreen('upload');
+      const isDemo = ['ABC Traders Pvt Ltd','New Startup Ltd','Fake Corp Ltd'].includes(form.biz);
+      if (isDemo) {
+        handleSubmitAnalysis(data.application_id, form);
+      } else {
+        setScreen('upload');
+      }
     }catch(e){
       console.error(e);
       alert('Initialization failed: '+e.message);
@@ -2102,7 +2107,7 @@ const App=()=>{
     }
   };
 
-  const handleSubmitAnalysis=async(appId)=>{
+  const handleSubmitAnalysis=async(appId, currentForm=null)=>{
     setLoading(true);
     setScreen('pipeline');
     setPipelineStage(0);
@@ -2117,14 +2122,15 @@ const App=()=>{
     };
     runAgents();
     try{
+      const actualForm = currentForm || formData;
       const payload={
-        business_name:formData.biz,
-        owner_name:formData.owner,
-        loan_amount:+formData.amount,
-        monthly_revenue:+formData.revenue || 0.0,
-        years_in_business:+formData.years||5,
-        industry:formData.industry||'General Trade',
-        loan_purpose:formData.purpose||'Working capital',
+        business_name:actualForm.biz,
+        owner_name:actualForm.owner,
+        loan_amount:+actualForm.amount,
+        monthly_revenue:+actualForm.revenue || 0.0,
+        years_in_business:+actualForm.years||5,
+        industry:actualForm.industry||'General Trade',
+        loan_purpose:actualForm.purpose||'Working capital',
         application_id:appId
       };
       const res=await fetch(BACKEND+'/analyze-loan',{
@@ -2224,7 +2230,7 @@ const App=()=>{
         ),
         // Results screen
         screen==='results'&&apiData&&React.createElement('div',{style:{maxWidth:1100,margin:'0 auto'}},
-          React.createElement(ResultsDashboard,{data:apiData,form:formData,elapsed,onReset:handleReset})
+          React.createElement(ResultsDashboard,{data:apiData,form:formData,elapsed,onReset:handleReset,isDemo:['ABC Traders Pvt Ltd','New Startup Ltd','Fake Corp Ltd'].includes(formData.biz)})
         ),
         // Review Queue screen
         screen==='review_queue'&&React.createElement('div',{style:{maxWidth:1100,margin:'0 auto'}},
