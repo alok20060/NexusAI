@@ -239,8 +239,11 @@ Borderline cases are routed for manual review.
 ### Clone Repository
 
 ```bash
-git clone https://github.com/alok20060/Harvest.git
-cd Harvest
+```bash
+git clone https://github.com/alok20060/NexusAI.git
+cd NexusAI
+```
+
 ```
 
 ### Install Dependencies
