@@ -1374,13 +1374,6 @@ class BankGuardOrchestrator:
             next_action = f"Reject the application due to missing mandatory documents: {', '.join(missing_docs)}"
             decision_rule = "missing_mandatory_documents"
         else:
-            # Demo override: ensure approved demo case always APPROVE when strict demo conditions are satisfied
-            biz_norm = (application.get("business_name") or "").lower()
-            is_demo_abc = "abc traders" in biz_norm or "traders" in biz_norm and "abc" in biz_norm
-            if is_demo_abc and document_completeness == 1.0 and upload_progress == 1.0 and (not missing_documents) and float(fraud_score_val) == 0.7 and float(confidence_val) > 0.8:
-                final_rec = "Approve"
-                next_action = "Proceed with loan issuance"
-                decision_rule = "demo_override_abc_traders"
             elif ratio > 100:
                 final_rec = "Reject"
                 next_action = "Reject the application immediately due to an excessive Loan-to-Revenue ratio exceeding 100x."
