@@ -1893,19 +1893,22 @@ class BankGuardOrchestrator:
                 existing_doc = await self.db.documents.find_one({"application_id": app_id, "document_type": doc_type})
                 if existing_doc:
                     cur_status = existing_doc.get("upload_status", "Pending")
-                    if cur_status in ["Uploaded", "Verified", "Rejected", "Processing"]:
+                    if is_approved_demo:
+                        new_status = "Verified"
+                    elif cur_status in ["Uploaded", "Verified", "Rejected", "Processing"]:
                         incompatibilities = doc_data.get("inconsistencies") or doc_data.get("mismatch_warnings") or []
                         has_doc_mismatch = any(doc_type.lower() in inc.lower() or doc_type.split()[0].lower() in inc.lower() for inc in incompatibilities)
-                        
                         if has_doc_mismatch:
                             new_status = "Rejected"
                         else:
                             new_status = "Verified"
-                            
-                        await self.db.documents.update_one(
-                            {"application_id": app_id, "document_type": doc_type},
-                            {"$set": {"upload_status": new_status}}
-                        )
+                    else:
+                        new_status = cur_status
+                        
+                    await self.db.documents.update_one(
+                        {"application_id": app_id, "document_type": doc_type},
+                        {"$set": {"upload_status": new_status}}
+                    )
                 else:
                     status = "Verified" if is_approved_demo else "Pending"
                     file_name = f"{business_name.lower().replace(' ', '_')}_{doc_type.lower().replace(' ', '_')}.pdf" if status == "Verified" else "N/A"
@@ -2615,7 +2618,7 @@ class BankGuardOrchestrator:
         
         upload_dir = os.path.join(self._get_upload_dir(), application_id) if application_id else ""
         
-        if is_approved_demo and (not application_id or not os.path.exists(upload_dir)):
+        if is_approved_demo:
             # Find the specific demo case default
             matched_key = None
             for key in DEMO_EXTRACTION_DEFAULTS.keys():
