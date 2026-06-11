@@ -88,11 +88,11 @@ def get_sync_client() -> MongoClient:
     try:
         client = MongoClient(
             MONGO_URI,
-            tls=True,
             tlsCAFile=certifi.where(),
-            serverSelectionTimeoutMS=30000,
-            connectTimeoutMS=30000,
-            socketTimeoutMS=30000
+            serverSelectionTimeoutMS=60000,
+            connectTimeoutMS=60000,
+            socketTimeoutMS=60000,
+            retryWrites=True
         )
         try:
             client.admin.command("ping")
@@ -121,11 +121,11 @@ def create_async_client() -> AsyncIOMotorClient:
     try:
         client = AsyncIOMotorClient(
             MONGO_URI,
-            tls=True,
             tlsCAFile=certifi.where(),
-            serverSelectionTimeoutMS=30000,
-            connectTimeoutMS=30000,
-            socketTimeoutMS=30000
+            serverSelectionTimeoutMS=60000,
+            connectTimeoutMS=60000,
+            socketTimeoutMS=60000,
+            retryWrites=True
         )
         return client
     except Exception as e:
@@ -139,9 +139,16 @@ async def verify_atlas_connection(db_client: AsyncIOMotorClient) -> dict:
         await db_client.admin.command("ping")
         db = db_client[DB_NAME]
         collections = await db.list_collection_names()
-        logger.info("Atlas connection established")
-        logger.info(f"Database selected: {DB_NAME}")
-        logger.info(f"Collections loaded successfully ({len(collections)} found)")
+        
+        # Console output as requested
+        print("Atlas connection successful")
+        print(f"Database name: {DB_NAME}")
+        print(f"Number of collections loaded: {len(collections)}")
+        
+        logger.info("Atlas connection successful")
+        logger.info(f"Database name: {DB_NAME}")
+        logger.info(f"Number of collections loaded: {len(collections)}")
+        
         missing = [c for c in REQUIRED_COLLECTIONS if c not in collections]
         if missing:
             logger.warning(
