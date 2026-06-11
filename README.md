@@ -301,8 +301,8 @@ NexusAI BankGuard transforms traditional underwriting into a transparent, explai
 # 👨‍💻 Authors
 
 ### Alok VK
-###Akkshay GV
-###Vighensh Ganji
+### Akkshay GV
+### Vighensh Ganji
 
 Engineering Student | AI & ML Enthusiast
 
