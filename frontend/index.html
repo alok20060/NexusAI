@@ -905,42 +905,105 @@ const ResultsDashboard=({data,form,elapsed,onReset,isDemo})=>{
       )
     ),
 
-    // ── RISK HEATMAP & MANUAL REVIEW QUEUE STATUS ────────────────────────────
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, marginBottom: 16 } },
-      // Risk Heatmap Card
-      React.createElement('div', { className: 'metric-card' },
-        React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 16, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 } },
-          React.createElement(Icon, { name: 'chart', size: 13, color: '#60A5FA' }),
-          '⬡ Underwriting Risk Heatmap'
-        ),
-        React.createElement(RiskHeatmap, { repaymentRisk: fr.repayment_risk || 'Low', fraudRisk: fr.fraud_risk || 'Low' })
+    // ── RISK SUMMARY DASHBOARD ────────────────────────────────────────────────
+    React.createElement('div', { style: { marginBottom: 16 } },
+      React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 16, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 } },
+        React.createElement(Icon, { name: 'chart', size: 13, color: '#60A5FA' }),
+        '⬡ Risk Summary Dashboard'
       ),
-      // Manual Review Status Card
-      React.createElement('div', { className: 'metric-card', style: { border: rec === 'Manual Review' ? '1px solid rgba(245,158,11,0.4)' : '1px solid rgba(255,255,255,0.06)', background: rec === 'Manual Review' ? 'rgba(245,158,11,0.02)' : 'rgba(255,255,255,0.01)' } },
-        React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 16, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 } },
-          React.createElement(Icon, { name: 'shield', size: 13, color: rec === 'Manual Review' ? '#F59E0B' : 'rgba(255,255,255,0.3)' }),
-          '⬡ Manual Review Status'
+      React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 } },
+        // 1. Fraud Risk
+        (() => {
+          const fRisk = fr.fraud_risk || 'Low';
+          const val = fr.fraud_score !== undefined ? fr.fraud_score : (fRisk === 'High' ? 88 : fRisk === 'Moderate' || fRisk === 'Medium' ? 45 : 12);
+          const color = val >= 70 ? '#EF4444' : val >= 35 ? '#F59E0B' : '#10B981';
+          const pct = Math.min(100, Math.max(0, val));
+          return React.createElement('div', { className: 'metric-card glass-panel', style: { padding: 16, border: `1px solid ${color}33`, background: `linear-gradient(135deg, ${color}0A, transparent)` } },
+            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 } },
+              React.createElement('span', { style: { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' } }, 'Fraud Risk'),
+              React.createElement(Icon, { name: 'shield', size: 14, color })
+            ),
+            React.createElement('div', { style: { fontSize: 28, fontWeight: 800, color: '#FFF', marginBottom: 12 } }, val, React.createElement('span', { style: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500 } }, '/100')),
+            React.createElement('div', { style: { width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 } },
+              React.createElement('div', { style: { width: `${pct}%`, height: '100%', background: color, transition: 'width 1s ease-out' } })
+            ),
+            React.createElement('div', { style: { fontSize: 10, fontWeight: 600, color, textTransform: 'uppercase' } }, val >= 70 ? 'HIGH RISK' : val >= 35 ? 'MODERATE RISK' : 'LOW RISK')
+          );
+        })(),
+        // 2. Business Risk
+        (() => {
+          const val = fr.risk_score || 0;
+          const color = val >= 70 ? '#EF4444' : val >= 35 ? '#F59E0B' : '#10B981';
+          const pct = Math.min(100, Math.max(0, val));
+          return React.createElement('div', { className: 'metric-card glass-panel', style: { padding: 16, border: `1px solid ${color}33`, background: `linear-gradient(135deg, ${color}0A, transparent)` } },
+            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 } },
+              React.createElement('span', { style: { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' } }, 'Business Risk'),
+              React.createElement(Icon, { name: 'building', size: 14, color })
+            ),
+            React.createElement('div', { style: { fontSize: 28, fontWeight: 800, color: '#FFF', marginBottom: 12 } }, val, React.createElement('span', { style: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500 } }, '/100')),
+            React.createElement('div', { style: { width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 } },
+              React.createElement('div', { style: { width: `${pct}%`, height: '100%', background: color, transition: 'width 1s ease-out' } })
+            ),
+            React.createElement('div', { style: { fontSize: 10, fontWeight: 600, color, textTransform: 'uppercase' } }, val >= 70 ? 'HIGH RISK' : val >= 35 ? 'MODERATE RISK' : 'LOW RISK')
+          );
+        })(),
+        // 3. Credit Risk
+        (() => {
+          const cRisk = fr.repayment_risk || 'Low';
+          const val = fr.repayment_score !== undefined ? fr.repayment_score : (cRisk === 'High' ? 85 : cRisk === 'Moderate' || cRisk === 'Medium' ? 50 : 15);
+          const color = val >= 70 ? '#EF4444' : val >= 35 ? '#F59E0B' : '#10B981';
+          const pct = Math.min(100, Math.max(0, val));
+          return React.createElement('div', { className: 'metric-card glass-panel', style: { padding: 16, border: `1px solid ${color}33`, background: `linear-gradient(135deg, ${color}0A, transparent)` } },
+            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 } },
+              React.createElement('span', { style: { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' } }, 'Credit Risk'),
+              React.createElement(Icon, { name: 'credit-card', size: 14, color })
+            ),
+            React.createElement('div', { style: { fontSize: 28, fontWeight: 800, color: '#FFF', marginBottom: 12 } }, val, React.createElement('span', { style: { fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500 } }, '/100')),
+            React.createElement('div', { style: { width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 } },
+              React.createElement('div', { style: { width: `${pct}%`, height: '100%', background: color, transition: 'width 1s ease-out' } })
+            ),
+            React.createElement('div', { style: { fontSize: 10, fontWeight: 600, color, textTransform: 'uppercase' } }, val >= 70 ? 'HIGH RISK' : val >= 35 ? 'MODERATE RISK' : 'LOW RISK')
+          );
+        })(),
+        // 4. Overall Decision
+        (() => {
+          const overallDecision = isApproved ? 'APPROVED ✅' : isRejected ? 'REJECTED ❌' : 'MANUAL REVIEW ⚠️';
+          const decColor = isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B';
+          const combinedScore = Math.round(((fr.risk_score || 0) + (fr.trust_score || 100)) / 2);
+          return React.createElement('div', { className: 'metric-card glass-panel', style: { padding: 16, border: `1px solid ${decColor}40`, background: `linear-gradient(135deg, ${decColor}0A, transparent)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' } },
+            React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 8 } }, 'Overall Score'),
+            React.createElement('div', { style: { fontSize: 32, fontWeight: 800, color: '#FFF', marginBottom: 4 } }, combinedScore),
+            React.createElement('div', { style: { fontSize: 14, fontWeight: 800, color: decColor, letterSpacing: '0.05em', marginTop: 'auto' } }, overallDecision)
+          );
+        })()
+      )
+    ),
+
+    // ── DECISION SUMMARY PANEL ────────────────────────────────────────────────
+    React.createElement('div', { className: 'metric-card glass-panel', style: { marginBottom: 24, padding: '20px 24px', borderLeft: `4px solid ${isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B'}`, background: `linear-gradient(90deg, ${isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B'}08, transparent)` } },
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 16, marginBottom: 16 } },
+        React.createElement('div', { style: { fontSize: 18, fontWeight: 800, color: isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B', display: 'flex', alignItems: 'center', gap: 10 } },
+          React.createElement(Icon, { name: isApproved ? 'check' : isRejected ? 'x' : 'alert-circle', size: 20, color: isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B' }),
+          `Decision: ${isApproved ? 'APPROVED ✅' : isRejected ? 'REJECTED ❌' : 'MANUAL REVIEW ⚠️'}`
         ),
-        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-          React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 11 } },
-            React.createElement('span', { style: { color: 'rgba(255,255,255,0.4)' } }, 'Queue State'),
-            React.createElement('span', { style: { fontWeight: 600, color: rec === 'Manual Review' ? '#F59E0B' : '#10B981' } }, rec === 'Manual Review' ? 'Awaiting Human Override' : 'Bypassed (Auto-Resolved)')
-          ),
-          rec === 'Manual Review' && React.createElement(React.Fragment, null,
-            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 11 } },
-              React.createElement('span', { style: { color: 'rgba(255,255,255,0.4)' } }, 'Case Priority'),
-              React.createElement('span', { className: `badge badge-${fr.fraud_risk === 'High' || fr.risk_score >= 75 ? 'red' : 'amber'}` }, fr.fraud_risk === 'High' || fr.risk_score >= 75 ? 'High' : 'Medium')
-            ),
-            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 11 } },
-              React.createElement('span', { style: { color: 'rgba(255,255,255,0.4)' } }, 'Assigned Reviewer'),
-              React.createElement('span', { style: { color: '#E2E8F0', fontFamily: 'JetBrains Mono, monospace' } }, 'Unassigned (Pull Queue)')
-            ),
-            React.createElement('div', { style: { marginTop: 6, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' } },
-              React.createElement('div', { style: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 8 } }, 'HUMAN-IN-THE-LOOP OVERRIDE'),
-              React.createElement(ManualOverridePanel, { applicationId: fr.reference_id || data.input.application_id, onResolve: onReset })
-            )
-          )
+        React.createElement('div', { style: { fontSize: 14, fontWeight: 600, color: '#E2E8F0', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: 8 } },
+          `Confidence: ${Math.round((fr.confidence || 0) * 100)}%`
         )
+      ),
+      React.createElement('div', { style: { fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 } }, 'Reasoning:'),
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+        (fr.explainability_report ? fr.explainability_report.split('\n') : reasons).map((r, idx) => {
+          const text = typeof r === 'string' ? r.replace(/^[-•]\s*/, '').trim() : r.reason;
+          if (!text) return null;
+          return React.createElement('div', { key: idx, style: { display: 'flex', gap: 10, alignItems: 'flex-start' } },
+            React.createElement('div', { style: { marginTop: 4, width: 6, height: 6, borderRadius: '50%', background: isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B', flexShrink: 0 } }),
+            React.createElement('span', { style: { fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 } }, text)
+          );
+        })
+      ),
+      rec === 'Manual Review' && React.createElement('div', { style: { marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' } },
+        React.createElement('div', { style: { fontSize: 11, fontWeight: 600, color: '#F59E0B', textTransform: 'uppercase', marginBottom: 12 } }, 'Human-in-the-Loop Override Required:'),
+        React.createElement(ManualOverridePanel, { applicationId: fr.reference_id || data.input.application_id, onResolve: onReset })
       )
     ),
 
