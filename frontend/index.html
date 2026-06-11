@@ -2093,12 +2093,7 @@ const App=()=>{
       setApplicationId(data.application_id);
       setApplicantType(data.applicant_type);
       setRequiredDocs(data.required_documents);
-      const isDemo = ['ABC Traders Pvt Ltd','New Startup Ltd','Fake Corp Ltd'].includes(form.biz);
-      if (isDemo) {
-        handleSubmitAnalysis(data.application_id, form);
-      } else {
-        setScreen('upload');
-      }
+      setScreen('upload');
     }catch(e){
       console.error(e);
       alert('Initialization failed: '+e.message);
@@ -2107,7 +2102,7 @@ const App=()=>{
     }
   };
 
-  const handleSubmitAnalysis=async(appId, currentForm=null)=>{
+  const handleSubmitAnalysis=async(appId)=>{
     setLoading(true);
     setScreen('pipeline');
     setPipelineStage(0);
@@ -2122,15 +2117,14 @@ const App=()=>{
     };
     runAgents();
     try{
-      const actualForm = currentForm || formData;
       const payload={
-        business_name:actualForm.biz,
-        owner_name:actualForm.owner,
-        loan_amount:+actualForm.amount,
-        monthly_revenue:+actualForm.revenue || 0.0,
-        years_in_business:+actualForm.years||5,
-        industry:actualForm.industry||'General Trade',
-        loan_purpose:actualForm.purpose||'Working capital',
+        business_name:formData.biz,
+        owner_name:formData.owner,
+        loan_amount:+formData.amount,
+        monthly_revenue:+formData.revenue || 0.0,
+        years_in_business:+formData.years||5,
+        industry:formData.industry||'General Trade',
+        loan_purpose:formData.purpose||'Working capital',
         application_id:appId
       };
       const res=await fetch(BACKEND+'/analyze-loan',{
