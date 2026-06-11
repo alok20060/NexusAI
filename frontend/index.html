@@ -183,9 +183,9 @@ const Icon=({name,size=16,color='currentColor',className=''})=>{
 
 // ─── DEMO CASES ─────────────────────────────────────────────────────────────
 const DEMO_CASES=[
-  {id:'DEMO-01',label:'Healthy Approval',name:'ABC Traders Pvt Ltd',owner:'Rajesh Kumar',amount:500000,revenue:200000,years:5,industry:'Retail & FMCG',purpose:'Working capital expansion',expected:'Approve',color:'emerald',ratio:'2.5×',note:'Low ratio · clean fraud record · verified business'},
-  {id:'DEMO-02',label:'High Risk Ratio',name:'New Startup Ltd',owner:'Test User',amount:50000000,revenue:100000,years:1,industry:'Services & IT',purpose:'Expansion',expected:'Reject',color:'rose',ratio:'500×',note:'Loan-to-revenue 500× exceeds 100× ceiling'},
-  {id:'DEMO-03',label:'Fraud DB Match',name:'Fake Corp Ltd',owner:'Fraud User',amount:1000000,revenue:100000,years:3,industry:'General Trade',purpose:'Equipment purchase',expected:'Reject',color:'rose',ratio:'10×',note:'Matched fraud_cases record in MongoDB — FC_TEST_001'},
+  {id:'DEMO-01',label:'Demo Case 1',name:'ABC Traders Pvt Ltd',owner:'Rajesh Kumar',amount:500000,revenue:200000,years:5,industry:'Retail & FMCG',purpose:'Working capital expansion',color:'indigo',ratio:'2.5×',note:'Established business · Low ratio'},
+  {id:'DEMO-02',label:'Demo Case 2',name:'New Startup Ltd',owner:'Test User',amount:1000000,revenue:100000,years:1,industry:'Services & IT',purpose:'Expansion',color:'indigo',ratio:'10×',note:'New startup · Medium ratio'},
+  {id:'DEMO-03',label:'Demo Case 3',name:'Fake Corp Ltd',owner:'Fraud User',amount:1000000,revenue:100000,years:3,industry:'General Trade',purpose:'Equipment purchase',color:'indigo',ratio:'10×',note:'Medium ratio · Watchlist match'},
 ];
 
 // ─── GAUGE COMPONENT (SVG semicircle) ───────────────────────────────────────
@@ -689,15 +689,11 @@ const LoanForm=({onSubmit,loading})=>{
     // Demo cases panel
     showDemo&&React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:24},className:'fade-in'},
       DEMO_CASES.map((c,i)=>{
-        const expColor=c.expected==='Approve'?'#10B981':'#EF4444';
         return React.createElement('div',{key:c.id,className:`demo-case-card ${activeDemo===i?'active':''}`,onClick:()=>loadDemo(i)},
           React.createElement('div',{style:{fontSize:9,color:'rgba(255,255,255,0.3)',letterSpacing:'0.15em',marginBottom:6}},c.id+' · '+c.label.toUpperCase()),
           React.createElement('div',{style:{fontSize:13,fontWeight:700,color:'#E2E8F0',marginBottom:4}},c.name),
-          React.createElement('div',{style:{fontSize:10,color:'rgba(255,255,255,0.4)',lineHeight:1.7,marginBottom:8}},
+          React.createElement('div',{style:{fontSize:10,color:'rgba(255,255,255,0.4)',lineHeight:1.7,marginBottom:4}},
             'Ratio: ',React.createElement('span',{style:{color:'#60A5FA',fontWeight:600}},c.ratio),React.createElement('br'),c.note
-          ),
-          React.createElement('div',{style:{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 10px',borderRadius:100,fontSize:10,fontWeight:600,background:`${expColor}1A`,color:expColor,border:`1px solid ${expColor}4D`}},
-            c.expected==='Approve'?'✓ APPROVE':'✕ REJECT'
           )
         );
       })

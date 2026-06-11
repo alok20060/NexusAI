@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Union, Optional
 from pydantic import BaseModel
 from backend.database import MONGO_URI, DB_NAME, create_async_client
+from backend.demo_data import is_demo_case, map_document_name
 
 # Import Pydantic schemas
 from backend.schemas import FinalDecisionOutput, AgentTraceItem, AuditLogItem
@@ -256,7 +257,7 @@ class BankGuardOrchestrator:
                 profile_confidence = profiling_output.get("profile_confidence", 0.95)
                 await self._update_timeline(application_id, "Applicant Profiling", "Completed")
 
-            is_approved_demo = "Traders" in business_name
+            is_approved_demo = is_demo_case(business_name)
 
             reasoning_trace.append(AgentTraceItem(
                 agent="PROFILER",
@@ -714,15 +715,20 @@ class BankGuardOrchestrator:
                     db_docs = await cursor.to_list(length=100)
                     doc_map = {d["document_type"]: d for d in db_docs}
                     
+                    is_demo = is_demo_case(business_name)
                     is_legacy = any(x in business_name.lower() for x in ["traders", "phase 2", "phase 3", "phase 8"])
                     if is_legacy:
                         for doc_type in required_docs:
-                            db_doc = doc_map.get(doc_type, {})
+                            db_doc = doc_map.get(doc_type, {}) or doc_map.get(map_document_name(doc_type), {})
+                            status = "Verified" if is_demo else db_doc.get("upload_status", "Pending")
+                            file_name = db_doc.get("file_name", "N/A")
+                            if is_demo and file_name == "N/A":
+                                file_name = f"{business_name.lower().replace(' ', '_')}_{self._sanitize_doc_type(doc_type)}.pdf"
                             checklist_items.append({
-                                "document_type": doc_type,
+                                "document_type": map_document_name(doc_type) if is_demo else doc_type,
                                 "required": True,
-                                "upload_status": db_doc.get("upload_status", "Pending"),
-                                "file_name": db_doc.get("file_name", "N/A"),
+                                "upload_status": status,
+                                "file_name": file_name,
                                 "uploaded_at": db_doc.get("uploaded_at", "N/A")
                             })
                     else:
@@ -732,12 +738,16 @@ class BankGuardOrchestrator:
                             "Asset Documents", "Property Documents", "Vehicle RC", "Investment Statements"
                         ]
                         for doc_type in ALL_DOCS:
-                            db_doc = doc_map.get(doc_type, {})
+                            db_doc = doc_map.get(doc_type, {}) or doc_map.get(map_document_name(doc_type), {})
+                            status = "Verified" if is_demo else db_doc.get("upload_status", "Pending")
+                            file_name = db_doc.get("file_name", "N/A")
+                            if is_demo and file_name == "N/A":
+                                file_name = f"{business_name.lower().replace(' ', '_')}_{self._sanitize_doc_type(doc_type)}.pdf"
                             checklist_items.append({
-                                "document_type": doc_type,
-                                "required": doc_type in required_docs,
-                                "upload_status": db_doc.get("upload_status", "Pending"),
-                                "file_name": db_doc.get("file_name", "N/A"),
+                                "document_type": map_document_name(doc_type) if is_demo else doc_type,
+                                "required": map_document_name(doc_type) in required_docs or doc_type in required_docs,
+                                "upload_status": status,
+                                "file_name": file_name,
                                 "uploaded_at": db_doc.get("uploaded_at", "N/A")
                             })
                 except Exception as e:
@@ -1351,6 +1361,12 @@ class BankGuardOrchestrator:
         elif ratio > 20:
             final_rec = "Manual Review"
             next_action = "Refer to the Senior Credit Committee for manual underwriting due to high Loan-to-Revenue ratio exceeding 20x."
+        elif ratio > 5:
+            final_rec = "Manual Review"
+            next_action = "Refer to the Senior Credit Committee for manual underwriting due to elevated Loan-to-Revenue ratio exceeding 5x."
+        elif risk_data.get("recommendation") == "Manual Review" or risk_score >= 50:
+            final_rec = "Manual Review"
+            next_action = "Refer to the Senior Credit Committee for manual underwriting due to elevated credit risk score."
         elif business_status == "Unable to Verify":
             final_rec = "Manual Review"
             next_action = "Refer to the Senior Credit Committee for manual underwriting due to unverifiable business status."
@@ -1867,7 +1883,7 @@ class BankGuardOrchestrator:
             self.logger.info(f"Stored profile in 'applicant_profiles' for {app_id}")
 
             # 5. Insert / Update document status checkpoints
-            is_approved_demo = "Traders" in business_name
+            is_approved_demo = is_demo_case(business_name)
             doc_data = doc_output or {}
             if not doc_data and decision.document_intelligence:
                 doc_data = decision.document_intelligence.model_dump()
@@ -2486,8 +2502,8 @@ class BankGuardOrchestrator:
                 "business_name": "ABC Traders Pvt Ltd",
                 "owner_name": "Rajesh Kumar",
                 "business_registration_number": "REG-83921-IN",
-                "monthly_revenue": 10000.0,
-                "annual_revenue": 120000.0,
+                "monthly_revenue": 200000.0,
+                "annual_revenue": 2400000.0,
                 "business_age": 5,
                 "tax_ids": "GSTIN-ABCDE1234F",
                 "office_address": "123 Main St, Mumbai",
@@ -2495,13 +2511,26 @@ class BankGuardOrchestrator:
                 "credit_score": 750,
                 "collateral_details": "Property"
             },
+            "new startup": {
+                "business_name": "New Startup Ltd",
+                "owner_name": "Test User",
+                "business_registration_number": "REG-99999-ST",
+                "monthly_revenue": 100000.0,
+                "annual_revenue": 1200000.0,
+                "business_age": 1,
+                "tax_ids": "GSTIN-STARTUP123",
+                "office_address": "789 Startup Blvd",
+                "bank_account_information": "SBI 9876543210",
+                "credit_score": 650,
+                "collateral_details": "None"
+            },
             "fake corp": {
                 "business_name": "Fake Corp Ltd",
                 "owner_name": "Fraud User",
                 "business_registration_number": "REG-00000-XX",
-                "monthly_revenue": 1000.0,
-                "annual_revenue": 12000.0,
-                "business_age": 1,
+                "monthly_revenue": 100000.0,
+                "annual_revenue": 1200000.0,
+                "business_age": 3,
                 "tax_ids": "GSTIN-XXXXX0000X",
                 "office_address": "456 Suspicious Rd",
                 "bank_account_information": "FakeBank 00000000",
@@ -2574,7 +2603,7 @@ class BankGuardOrchestrator:
             application = {}
             
         business_name = application.get("business_name", "Unknown Business")
-        is_approved_demo = is_approved_demo or "Traders" in business_name
+        is_approved_demo = is_approved_demo or is_demo_case(business_name)
         
         # Normalization
         norm_biz_name = self._normalize_text(business_name)
@@ -2587,8 +2616,15 @@ class BankGuardOrchestrator:
         upload_dir = os.path.join(self._get_upload_dir(), application_id) if application_id else ""
         
         if is_approved_demo and (not application_id or not os.path.exists(upload_dir)):
-            # Load defaults from abc traders
-            extracted_fields = DEMO_EXTRACTION_DEFAULTS.get("abc traders", {}).copy()
+            # Find the specific demo case default
+            matched_key = None
+            for key in DEMO_EXTRACTION_DEFAULTS.keys():
+                if key in norm_biz_name.lower():
+                    matched_key = key
+                    break
+            if not matched_key:
+                matched_key = "abc traders"
+            extracted_fields = DEMO_EXTRACTION_DEFAULTS.get(matched_key, {}).copy()
             return {
                 "document_completeness": 1.0,
                 "verified_documents": required_docs,
@@ -3002,18 +3038,18 @@ class BankGuardOrchestrator:
         
         for doc_t, ext_data in doc_extractions.items():
             f = ext_data.get("fields", {})
-            if "aadhaar" in doc_t.lower() or doc_t == "Personal ID":
+            if "aadhaar" in doc_t.lower() or doc_t in ["Personal ID", "Government ID"] or "government id" in doc_t.lower():
                 aadhaar_name = f.get("owner_name") or f.get("name")
-            if "pan" in doc_t.lower() or doc_t == "Personal ID":
+            if "pan" in doc_t.lower() or doc_t in ["Personal ID", "Tax Identification Document"] or "tax identification" in doc_t.lower():
                 pan_name = f.get("owner_name") or f.get("name")
-            if "gst" in doc_t.lower():
+            if "gst" in doc_t.lower() or "tax registration" in doc_t.lower():
                 gst_biz_name = f.get("business_name")
-            if "registration" in doc_t.lower() or "business registration" in doc_t.lower() or doc_t == "Business Registration Certificate":
+            if "registration" in doc_t.lower() or "business registration" in doc_t.lower() or doc_t in ["Business Registration Certificate", "Business Incorporation Certificate"] or "incorporation" in doc_t.lower():
                 reg_biz_name = f.get("business_name")
                 reg_address = f.get("office_address")
-            if "cibil" in doc_t.lower() or doc_t == "CIBIL Report" or doc_t == "Credit Score Report":
+            if "cibil" in doc_t.lower() or doc_t in ["CIBIL Report", "Credit Score Report", "Credit History Records"] or "credit history" in doc_t.lower() or "credit score" in doc_t.lower():
                 cibil_score_val = f.get("credit_score")
-            if "utility" in doc_t.lower() or doc_t == "Utility Bill" or doc_t == "Office address proof":
+            if "utility" in doc_t.lower() or doc_t in ["Utility Bill", "Office address proof", "Proof of Address"] or "address proof" in doc_t.lower() or "proof of address" in doc_t.lower():
                 utility_address = f.get("office_address") or f.get("address")
 
         # Cross check Aadhaar ↔ PAN

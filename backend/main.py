@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.schemas import LoanAnalysisInput, LoanAnalysisResponse, InitializeApplicationInput, InitializeApplicationResponse
 from backend.orchestrator import BankGuardOrchestrator
 from backend.database import verify_atlas_connection, DB_NAME, MONGO_URI, _log_connection_error
+from backend.demo_data import is_demo_case, map_document_name
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -208,6 +209,11 @@ async def initialize_application(payload: InitializeApplicationInput):
         }
         await orchestrator.db.applications.update_one({"application_id": app_id}, {"$set": app_doc}, upsert=True)
         
+        # If demo case, map the required docs and set approved demo flag
+        is_demo = is_demo_case(payload.business_name)
+        if is_demo:
+            required_docs = [map_document_name(doc) for doc in required_docs]
+
         # Insert applicant profiles
         await orchestrator.db.applicant_profiles.update_one(
             {"application_id": app_id},
@@ -241,7 +247,7 @@ async def initialize_application(payload: InitializeApplicationInput):
             )
             
         # Initialize document status records in DB
-        is_approved_demo = "Traders" in payload.business_name
+        is_approved_demo = is_demo
         status = "Verified" if is_approved_demo else "Pending"
         for doc_type in required_docs:
             file_name = f"{payload.business_name.lower().replace(' ', '_')}_{orchestrator._sanitize_doc_type(doc_type)}.pdf" if status == "Verified" else "N/A"
@@ -362,15 +368,20 @@ async def get_application_documents(application_id: str):
         biz_name = app_doc.get("business_name", "") if app_doc else ""
         is_legacy = any(x in biz_name.lower() for x in ["traders", "phase 2", "phase 3", "phase 8"])
         
+        is_demo = is_demo_case(biz_name)
         checklist = []
         if is_legacy:
             for doc_type in required_docs:
-                db_doc = doc_map.get(doc_type, {})
+                db_doc = doc_map.get(doc_type, {}) or doc_map.get(map_document_name(doc_type), {})
+                status = "Verified" if is_demo else db_doc.get("upload_status", "Pending")
+                file_name = db_doc.get("file_name", "N/A")
+                if is_demo and file_name == "N/A":
+                    file_name = f"{biz_name.lower().replace(' ', '_')}_{orchestrator._sanitize_doc_type(doc_type)}.pdf"
                 checklist.append({
-                    "document_type": doc_type,
+                    "document_type": map_document_name(doc_type) if is_demo else doc_type,
                     "required": True,
-                    "upload_status": db_doc.get("upload_status", "Pending"),
-                    "file_name": db_doc.get("file_name", "N/A"),
+                    "upload_status": status,
+                    "file_name": file_name,
                     "uploaded_at": db_doc.get("uploaded_at", "N/A")
                 })
         else:
@@ -380,12 +391,16 @@ async def get_application_documents(application_id: str):
                 "Asset Documents", "Property Documents", "Vehicle RC", "Investment Statements"
             ]
             for doc_type in ALL_DOCS:
-                db_doc = doc_map.get(doc_type, {})
+                db_doc = doc_map.get(doc_type, {}) or doc_map.get(map_document_name(doc_type), {})
+                status = "Verified" if is_demo else db_doc.get("upload_status", "Pending")
+                file_name = db_doc.get("file_name", "N/A")
+                if is_demo and file_name == "N/A":
+                    file_name = f"{biz_name.lower().replace(' ', '_')}_{orchestrator._sanitize_doc_type(doc_type)}.pdf"
                 checklist.append({
-                    "document_type": doc_type,
-                    "required": doc_type in required_docs,
-                    "upload_status": db_doc.get("upload_status", "Pending"),
-                    "file_name": db_doc.get("file_name", "N/A"),
+                    "document_type": map_document_name(doc_type) if is_demo else doc_type,
+                    "required": map_document_name(doc_type) in required_docs or doc_type in required_docs,
+                    "upload_status": status,
+                    "file_name": file_name,
                     "uploaded_at": db_doc.get("uploaded_at", "N/A")
                 })
             
