@@ -437,7 +437,6 @@ async def analyze_loan(payload: LoanAnalysisInput):
             "reasoning_trace": result["reasoning_trace"],
             "audit_log": result["audit_log"],
             "decision_explanation": result["decision_explanation"],
-            "decision_rule": result.get("decision_rule", None),
             "applicant_type": result.get("applicant_type", "Beginner Entrepreneur"),
             "required_documents": result.get("required_documents", []),
             "missing_documents": result.get("missing_documents", []),

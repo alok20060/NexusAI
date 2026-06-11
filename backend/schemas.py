@@ -169,7 +169,6 @@ class FinalDecisionOutput(BaseModel):
     sustainability_score: Optional[int] = Field(default=None, description="Business sustainability score")
     trust_score: Optional[int] = Field(default=None, description="Computed trust score (0-100)")
     zero_trust_data: Optional[ZeroTrustPayload] = Field(default=None, description="Zero-trust fields payload")
-    decision_rule: Optional[str] = Field(default=None, description="Identifier / explanation of the decision rule applied to reach the final recommendation")
 
 class FinalResponseModel(BaseModel):
     final_recommendation: str = Field(description="Final decision: 'Approve', 'Manual Review', 'Reject', or 'Additional Verification'")
@@ -208,7 +207,6 @@ class FinalResponseModel(BaseModel):
     report_hashes: Optional[List[dict]] = Field(default=[], description="SHA-256 hashes of generated reports")
     audit_chain: Optional[List[dict]] = Field(default=[], description="Lightweight blockchain ledger audit entries")
     checklist: Optional[List[dict]] = Field(default=[], description="Checklist with document statuses")
-    decision_rule: Optional[str] = Field(default=None, description="Identifier / explanation of the decision rule applied to reach the final recommendation")
 
 class LoanAnalysisResponse(BaseModel):
     input: dict = Field(description="Input payload parameters")
