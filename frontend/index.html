@@ -329,6 +329,308 @@ const Select=({label,options,value,onChange})=>
     )
   );
 
+// ─── SMART FILL PARSER ───────────────────────────────────────────────────────
+function parseApplicationText(text) {
+  const t = text.toLowerCase();
+  const result = {};
+
+  // Extract loan amount — supports lakh/crore, ₹, Rs, INR, numbers
+  const amtPatterns = [
+    /(?:₹|rs\.?|inr|rupees?)\s*([0-9,]+(?:\.[0-9]+)?)\s*(lakh|lac|crore|cr|k)?/i,
+    /([0-9,]+(?:\.[0-9]+)?)\s*(lakh|lac|crore|cr|k)?\s*(?:rupees?|₹|inr|rs\.?)/i,
+    /loan(?:\s+of|\s+amount(?:\s+of)?)?\s*(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.[0-9]+)?)\s*(lakh|lac|crore|cr|k)?/i,
+  ];
+  for (const p of amtPatterns) {
+    const m = text.match(p);
+    if (m) {
+      let val = parseFloat(m[1].replace(/,/g, ''));
+      const unit = (m[2]||'').toLowerCase();
+      if (unit==='lakh'||unit==='lac') val *= 100000;
+      else if (unit==='crore'||unit==='cr') val *= 10000000;
+      else if (unit==='k') val *= 1000;
+      result.amount = String(Math.round(val));
+      break;
+    }
+  }
+
+  // Extract revenue
+  const revPatterns = [
+    /(?:monthly\s+)?(?:revenue|turnover|sales|income)\s+(?:of\s+)?(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.[0-9]+)?)\s*(lakh|lac|crore|cr|k)?/i,
+    /(?:earn(?:ing|s)?|mak(?:e|ing)|generat(?:e|ing))\s+(?:₹|rs\.?|inr)?\s*([0-9,]+(?:\.[0-9]+)?)\s*(lakh|lac|crore|cr|k)?\s*(?:per\s+month|monthly)?/i,
+  ];
+  for (const p of revPatterns) {
+    const m = text.match(p);
+    if (m) {
+      let val = parseFloat(m[1].replace(/,/g, ''));
+      const unit = (m[2]||'').toLowerCase();
+      if (unit==='lakh'||unit==='lac') val *= 100000;
+      else if (unit==='crore'||unit==='cr') val *= 10000000;
+      else if (unit==='k') val *= 1000;
+      result.revenue = String(Math.round(val));
+      break;
+    }
+  }
+
+  // Business age in years
+  const ageMatch = text.match(/(\d+)[\-\s]year(?:s)?(?:[\-\s]old)?\s+(?:business|company|firm|shop|store|enterprise)/i)
+    || text.match(/(?:business|company|firm|shop|store)\s+(?:for|since|of)\s+(\d+)\s+year/i)
+    || text.match(/running\s+(?:for|since)?\s*(\d+)\s+year/i)
+    || text.match(/(\d+)\s+year[s]?\s+(?:of\s+)?(?:experience|operation|business)/i);
+  if (ageMatch) result.years = ageMatch[1];
+
+  // Industry detection
+  const industryMap = [
+    {keys:['textile','cloth','garment','fabric','apparel','fashion'],'val':'Manufacturing'},
+    {keys:['grocery','supermarket','kirana','fmcg','retail','shop','store','mart'],'val':'Retail & FMCG'},
+    {keys:['restaurant','hotel','hospitality','food','catering','bakery','cafe','dhaba'],'val':'Hospitality'},
+    {keys:['software','tech','it ','digital','app','saas','startup','technology'],'val':'Services & IT'},
+    {keys:['farm','agri','agriculture','crop','dairy','poultry','fishery','horticulture'],'val':'Agriculture & Allied'},
+    {keys:['hospital','clinic','pharmacy','medical','health','diagnostic','lab'],'val':'Healthcare'},
+    {keys:['manufactur','factory','production','assembl','machine'],'val':'Manufacturing'},
+    {keys:['trade','import','export','wholesale','distribution','supply'],'val':'General Trade'},
+  ];
+  for (const {keys,val} of industryMap) {
+    if (keys.some(k=>t.includes(k))) { result.industry = val; break; }
+  }
+
+  // Business name
+  const bizPatterns = [
+    /(?:my\s+(?:business|company|firm|shop|store)\s+(?:is\s+)?(?:called|named)?\s+)([A-Z][\w\s&.'-]{2,50}(?:Pvt\.?\s+Ltd\.?|Ltd\.?|LLP|Inc\.?|Co\.?)?)/i,
+    /([A-Z][\w\s&.'-]{2,40}(?:Pvt\.?\s+Ltd\.?|Ltd\.?|LLP|Enterprises?|Traders?|Industries|Solutions|Services))/,
+  ];
+  for (const p of bizPatterns) {
+    const m = text.match(p);
+    if (m) { result.biz = m[1].trim(); break; }
+  }
+
+  // Owner name — "I am X" / "my name is X" / "owner: X"
+  const ownerMatch = text.match(/(?:i am|my name is|owner(?:\s+name)?(?:\s+is)?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})/i)
+    || text.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})(?:\s+(?:here|speaking))?[,.]?\s+(?:applying|looking|seeking|need)/i);
+  if (ownerMatch) result.owner = ownerMatch[1].trim();
+
+  // Loan purpose keywords
+  const purposeMap = [
+    {keys:['working capital','working-capital','cash flow','liquidity'],'val':'Working capital expansion'},
+    {keys:['equipment','machinery','machine','plant','tool'],'val':'Equipment purchase'},
+    {keys:['expand','expansion','scale','grow','new branch','new outlet'],'val':'Business expansion'},
+    {keys:['inventory','stock','raw material','purchase goods'],'val':'Inventory procurement'},
+    {keys:['renovation','refurbish','interior','remodel'],'val':'Renovation & infrastructure'},
+    {keys:['export','import','trade finance'],'val':'Trade finance'},
+  ];
+  for (const {keys,val} of purposeMap) {
+    if (keys.some(k=>t.includes(k))) { result.purpose = val; break; }
+  }
+  if (!result.purpose) {
+    const purMatch = text.match(/(?:for|to)\s+(?:my\s+)?([a-zA-Z\s]{4,40}?)(?:\.|,|$)/i);
+    if (purMatch) result.purpose = purMatch[1].trim();
+  }
+
+  return result;
+}
+
+// ─── SMART FILL COMPONENT ────────────────────────────────────────────────────
+const SMART_FILL_EXAMPLES = [
+  'I run a 4-year-old textile shop called Sharma Fabrics. I need ₹8 lakh for machinery. My monthly revenue is ₹1.2 lakh.',
+  'Priya Mehta here, owner of Sunshine Bakery Pvt Ltd. Applying for ₹5 lakh working capital loan. Business is 2 years old.',
+  'We are ABC Agro Enterprises, a 6-year-old agriculture business. Need ₹20 lakh for expansion. Revenue: ₹3 lakh/month.',
+];
+
+const SmartFillInput=({onFill})=>{
+  const [text,setText]=useState('');
+  const [parsed,setParsed]=useState(null);
+  const [placeholderIdx,setPlaceholderIdx]=useState(0);
+  const [focused,setFocused]=useState(false);
+  const [animating,setAnimating]=useState(false);
+
+  // Rotate placeholder examples
+  useEffect(()=>{
+    const id=setInterval(()=>setPlaceholderIdx(i=>(i+1)%SMART_FILL_EXAMPLES.length),3200);
+    return()=>clearInterval(id);
+  },[]);
+
+  const handleParse=()=>{
+    if(!text.trim())return;
+    const result=parseApplicationText(text);
+    setParsed(result);
+    setAnimating(true);
+    setTimeout(()=>setAnimating(false),800);
+  };
+
+  const handleFill=()=>{
+    if(parsed){
+      onFill(parsed);
+      setParsed(null);
+      setText('');
+    }
+  };
+
+  const handleClear=()=>{
+    setText('');
+    setParsed(null);
+  };
+
+  const fieldLabels={
+    biz:'Business Name',owner:'Owner',amount:'Loan Amount',
+    revenue:'Monthly Revenue',years:'Business Age',industry:'Industry',purpose:'Purpose'
+  };
+  const parsedEntries=parsed?Object.entries(parsed).filter(([,v])=>v):[];
+
+  return React.createElement('div',{
+    style:{
+      background:'linear-gradient(135deg,rgba(59,130,246,0.06),rgba(129,140,248,0.04))',
+      border:'1px solid rgba(59,130,246,0.22)',
+      borderRadius:18,
+      padding:20,
+      marginBottom:24,
+      transition:'all 0.3s',
+      boxShadow:focused?'0 0 0 2px rgba(59,130,246,0.15),0 8px 32px rgba(0,0,0,0.3)':'0 4px 20px rgba(0,0,0,0.2)'
+    }
+  },
+    // Header row
+    React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:12}},
+      React.createElement('div',{style:{
+        width:32,height:32,borderRadius:10,
+        background:'linear-gradient(135deg,#2563EB,#7C3AED)',
+        display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,
+        boxShadow:'0 0 16px rgba(37,99,235,0.4)'
+      }},
+        React.createElement(Icon,{name:'zap',size:15,color:'#fff'})
+      ),
+      React.createElement('div',{style:{flex:1}},
+        React.createElement('div',{style:{fontSize:13,fontWeight:700,color:'#E2E8F0'}},
+          'Smart Application Fill',
+          React.createElement('span',{style:{
+            marginLeft:8,fontSize:9,fontWeight:600,padding:'2px 8px',borderRadius:100,
+            background:'rgba(129,140,248,0.15)',color:'#A78BFA',border:'1px solid rgba(129,140,248,0.3)',
+            letterSpacing:'0.1em',verticalAlign:'middle'
+          }},'AI-POWERED')
+        ),
+        React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.35)',marginTop:2}},
+          'Describe your loan application in plain English — we\'ll extract and fill the form for you.'
+        )
+      ),
+      // Collapse hint
+      React.createElement('div',{style:{fontSize:10,color:'rgba(255,255,255,0.2)',fontStyle:'italic'}},
+        'Or fill manually below ↓'
+      )
+    ),
+    // Textarea
+    React.createElement('div',{style:{position:'relative',marginBottom:12}},
+      React.createElement('textarea',{
+        id:'smart-fill-input',
+        value:text,
+        onChange:e=>setText(e.target.value),
+        onFocus:()=>setFocused(true),
+        onBlur:()=>setFocused(false),
+        onKeyDown:e=>{if(e.key==='Enter'&&e.ctrlKey)handleParse();},
+        placeholder:SMART_FILL_EXAMPLES[placeholderIdx],
+        rows:3,
+        style:{
+          width:'100%',resize:'vertical',
+          background:'rgba(3,7,18,0.5)',
+          border:`1px solid ${focused?'rgba(59,130,246,0.5)':'rgba(255,255,255,0.08)'}`,
+          borderRadius:12,padding:'12px 14px',
+          color:'#E2E8F0',fontSize:13,lineHeight:1.6,
+          fontFamily:'Inter,sans-serif',outline:'none',
+          transition:'all 0.2s',
+          boxShadow:focused?'0 0 0 3px rgba(59,130,246,0.1)':'none',
+          '::placeholder':{color:'rgba(255,255,255,0.2)'}
+        }
+      }),
+      // Character count
+      text.length>0&&React.createElement('div',{style:{
+        position:'absolute',bottom:8,right:10,
+        fontSize:9,color:'rgba(255,255,255,0.2)',fontFamily:'JetBrains Mono,monospace'
+      }},text.length+' chars')
+    ),
+    // Action buttons
+    React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
+      React.createElement('button',{
+        onClick:handleParse,
+        disabled:!text.trim(),
+        style:{
+          display:'inline-flex',alignItems:'center',gap:7,
+          padding:'9px 18px',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',
+          background:text.trim()?'linear-gradient(135deg,#2563EB,#7C3AED)':'rgba(255,255,255,0.05)',
+          color:text.trim()?'#fff':'rgba(255,255,255,0.3)',
+          border:text.trim()?'none':'1px solid rgba(255,255,255,0.08)',
+          transition:'all 0.2s',fontFamily:'Inter,sans-serif',
+          boxShadow:text.trim()?'0 4px 14px rgba(37,99,235,0.35)':'none',
+          opacity:text.trim()?1:0.6
+        }
+      },
+        React.createElement(Icon,{name:'brain',size:14,color:text.trim()?'#fff':'rgba(255,255,255,0.3)'}),
+        'Parse & Extract  (Ctrl+Enter)'
+      ),
+      text&&React.createElement('button',{
+        onClick:handleClear,
+        style:{
+          display:'inline-flex',alignItems:'center',gap:6,
+          padding:'9px 14px',borderRadius:10,fontSize:12,fontWeight:500,cursor:'pointer',
+          background:'rgba(239,68,68,0.08)',color:'rgba(239,68,68,0.7)',
+          border:'1px solid rgba(239,68,68,0.2)',transition:'all 0.2s',fontFamily:'Inter,sans-serif'
+        }
+      },
+        React.createElement(Icon,{name:'x',size:12,color:'rgba(239,68,68,0.7)'}),
+        'Clear'
+      ),
+      React.createElement('div',{style:{marginLeft:'auto',fontSize:10,color:'rgba(255,255,255,0.2)'}},
+        'Tip: include business name, loan amount, revenue, age & industry'
+      )
+    ),
+    // Parsed preview
+    parsed&&React.createElement('div',{
+      className:'fade-in',
+      style:{
+        marginTop:14,
+        background:'rgba(16,185,129,0.05)',
+        border:'1px solid rgba(16,185,129,0.2)',
+        borderRadius:12,
+        padding:14
+      }
+    },
+      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+        React.createElement('div',{style:{fontSize:11,fontWeight:700,color:'#34D399',display:'flex',alignItems:'center',gap:6}},
+          React.createElement(Icon,{name:'check',size:12,color:'#10B981'}),
+          parsedEntries.length+' field'+(parsedEntries.length!==1?'s':'')+' extracted successfully'
+        ),
+        parsedEntries.length===0&&React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.3)',fontStyle:'italic'}},
+          'No fields could be parsed — try adding more details.'
+        )
+      ),
+      parsedEntries.length>0&&React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginBottom:12}},
+        parsedEntries.map(([k,v])=>React.createElement('div',{key:k,style:{
+          display:'inline-flex',alignItems:'center',gap:6,
+          padding:'5px 11px',borderRadius:100,
+          background:'rgba(16,185,129,0.1)',
+          border:'1px solid rgba(16,185,129,0.25)',
+          fontSize:11
+        }},
+          React.createElement('span',{style:{color:'rgba(255,255,255,0.4)',fontSize:9,letterSpacing:'0.06em',textTransform:'uppercase'}},(fieldLabels[k]||k)+':'),
+          React.createElement('span',{style:{color:'#6EE7B7',fontWeight:600}},
+            k==='amount'||k==='revenue'?'₹'+Number(v).toLocaleString('en-IN'):
+            k==='years'?v+' yr':
+            v.length>22?v.substring(0,22)+'…':v
+          )
+        ))
+      ),
+      parsedEntries.length>0&&React.createElement('button',{
+        onClick:handleFill,
+        style:{
+          display:'inline-flex',alignItems:'center',gap:8,
+          padding:'9px 20px',borderRadius:10,fontSize:13,fontWeight:600,cursor:'pointer',
+          background:'linear-gradient(135deg,#059669,#10B981)',
+          color:'#fff',border:'none',fontFamily:'Inter,sans-serif',
+          boxShadow:'0 4px 14px rgba(16,185,129,0.35)',transition:'all 0.2s'
+        }
+      },
+        React.createElement(Icon,{name:'check',size:14,color:'#fff'}),
+        'Apply to Form ↓'
+      )
+    )
+  );
+};
+
 // ─── FORM COMPONENT ──────────────────────────────────────────────────────────
 const LoanForm=({onSubmit,loading})=>{
   const [form,setForm]=useState({biz:'',owner:'',amount:'',revenue:'',years:'5',industry:'',purpose:'',debt:'0'});
@@ -340,6 +642,20 @@ const LoanForm=({onSubmit,loading})=>{
     const c=DEMO_CASES[idx];
     setForm({biz:c.name,owner:c.owner,amount:String(c.amount),revenue:String(c.revenue),years:String(c.years||5),industry:c.industry,purpose:c.purpose,debt:String(c.debt||0)});
     setActiveDemo(idx);setErrors({});
+  };
+  const handleSmartFill=extracted=>{
+    setForm(f=>({
+      ...f,
+      ...(extracted.biz&&{biz:extracted.biz}),
+      ...(extracted.owner&&{owner:extracted.owner}),
+      ...(extracted.amount&&{amount:extracted.amount}),
+      ...(extracted.revenue&&{revenue:extracted.revenue}),
+      ...(extracted.years&&{years:extracted.years}),
+      ...(extracted.industry&&{industry:extracted.industry}),
+      ...(extracted.purpose&&{purpose:extracted.purpose}),
+    }));
+    setActiveDemo(null);
+    setErrors({});
   };
   const validate=()=>{
     const e={};
@@ -353,6 +669,16 @@ const LoanForm=({onSubmit,loading})=>{
   const fmt=n=>n?'₹'+Number(n).toLocaleString('en-IN'):'';
 
   return React.createElement('div',null,
+    // Smart fill input at the top
+    React.createElement(SmartFillInput,{onFill:handleSmartFill}),
+    // Divider with label
+    React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:20}},
+      React.createElement('div',{style:{flex:1,height:'1px',background:'rgba(255,255,255,0.06)'}}),
+      React.createElement('span',{style:{fontSize:10,color:'rgba(255,255,255,0.2)',letterSpacing:'0.12em',textTransform:'uppercase',whiteSpace:'nowrap'}},
+        'Or fill manually'
+      ),
+      React.createElement('div',{style:{flex:1,height:'1px',background:'rgba(255,255,255,0.06)'}})
+    ),
     // Demo toggle
     React.createElement('div',{style:{marginBottom:24}},
       React.createElement('button',{className:'btn-demo',onClick:()=>setShowDemo(s=>!s),style:{display:'flex',alignItems:'center',justifyContent:'center',gap:8}},
