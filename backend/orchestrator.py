@@ -2203,7 +2203,7 @@ class BankGuardOrchestrator:
         s = re.sub(r'\s+', ' ', s)
         return s.strip()
 
-    def _extract_text_from_file(self, filepath: str) -> Dict[str, Any]:
+    def _extract_text_from_file(self, file_bytes: bytes, ext: str, filename: str = "document") -> Dict[str, Any]:
         """
         Robust document parser with fallback priority:
         1. Gemini 2.5 Flash (multimodal semantic parsing)
@@ -2212,12 +2212,15 @@ class BankGuardOrchestrator:
         4. pytesseract (OCR)
         5. metadata parsing
         """
-        import os
         import json
-        from google import genai
-        from google.genai import types
-        
-        ext = os.path.splitext(filepath)[1].lower().strip('.')
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError:
+            genai = None
+            types = None
+
+        ext = ext.lower().strip('.')
         
         extracted_text = ""
         fallback_used = False
@@ -2236,11 +2239,9 @@ class BankGuardOrchestrator:
             mime_type = 'application/octet-stream'
 
         # 1. Try Gemini 2.5 Flash if available and not in mock mode
-        if hasattr(self, 'genai_client') and self.genai_client and not getattr(self, 'mock_mode', False):
+        if genai and types and hasattr(self, 'genai_client') and self.genai_client and not getattr(self, 'mock_mode', False):
             try:
-                self.logger.info(f"Attempting Gemini 2.5 Flash multimodal extraction for: {filepath}")
-                with open(filepath, 'rb') as f:
-                    file_bytes = f.read()
+                self.logger.info(f"Attempting Gemini 2.5 Flash multimodal extraction for: {filename}")
                 
                 prompt = """
                 You are an expert AI credit underwriting assistant. Analyze the uploaded document and extract key business metrics and reasoning assessments.
@@ -2316,44 +2317,44 @@ class BankGuardOrchestrator:
                 "method": "gemini"
             }
 
-        # Fallback to local parsers
-        self.logger.info(f"Falling back to local parsers for {filepath}")
+        # Fallback to local parsers (bytes-based, no disk reads)
+        self.logger.info(f"Falling back to local parsers for {filename}")
         if ext == 'pdf':
             # 2. Try pdfplumber
             try:
+                import io
                 import pdfplumber
-                with pdfplumber.open(filepath) as pdf:
+                with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
                     pages_text = []
                     for page in pdf.pages:
                         t = page.extract_text()
                         if t:
                             pages_text.append(t)
                     extracted_text = "\n".join(pages_text).strip()
-                    self.logger.info(f"pdfplumber extracted {len(extracted_text)} chars from {filepath}")
+                    self.logger.info(f"pdfplumber extracted {len(extracted_text)} chars from {filename}")
             except Exception as e:
                 err_msg = f"pdfplumber failed: {e}"
                 self.logger.warning(err_msg)
                 extraction_errors.append(err_msg)
-                
+
             # 3. Try PyPDF2 as fallback
             if not extracted_text:
                 try:
-                    import PyPDF2
-                    with open(filepath, 'rb') as f:
-                        reader = PyPDF2.PdfReader(f)
-                        pages_text = []
-                        for idx in range(len(reader.pages)):
-                            t = reader.pages[idx].extract_text()
-                            if t:
-                                pages_text.append(t)
-                        extracted_text = "\n".join(pages_text).strip()
-                        self.logger.info(f"PyPDF2 extracted {len(extracted_text)} chars from {filepath}")
+                    import io, PyPDF2
+                    reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+                    pages_text = []
+                    for idx in range(len(reader.pages)):
+                        t = reader.pages[idx].extract_text()
+                        if t:
+                            pages_text.append(t)
+                    extracted_text = "\n".join(pages_text).strip()
+                    self.logger.info(f"PyPDF2 extracted {len(extracted_text)} chars from {filename}")
                 except Exception as e:
                     err_msg = f"PyPDF2 failed: {e}"
                     self.logger.warning(err_msg)
                     extraction_errors.append(err_msg)
-                    
-            # 4. Try pytesseract (OCR) if PDF text is empty
+
+            # 4. OCR stub (requires poppler not available on Vercel)
             if not extracted_text:
                 try:
                     self.logger.info("PDF has no extractable text. Scanned PDF assumed. Triggering OCR fallback...")
@@ -2363,26 +2364,25 @@ class BankGuardOrchestrator:
                     err_msg = f"PDF OCR failed: {e}"
                     self.logger.warning(err_msg)
                     extraction_errors.append(err_msg)
-                    
+
         elif ext in ['png', 'jpg', 'jpeg']:
             # 4. Try pytesseract for images
             try:
                 from PIL import Image
-                import pytesseract
-                img = Image.open(filepath)
+                import pytesseract, io
+                img = Image.open(io.BytesIO(file_bytes))
                 extracted_text = pytesseract.image_to_string(img).strip()
-                self.logger.info(f"pytesseract extracted {len(extracted_text)} chars from {filepath}")
+                self.logger.info(f"pytesseract extracted {len(extracted_text)} chars from {filename}")
             except Exception as e:
                 err_msg = f"pytesseract failed: {e}"
                 self.logger.warning(err_msg)
                 extraction_errors.append(err_msg)
                 
-        # 5. Metadata parsing
+        # 5. Metadata parsing fallback
         if not extracted_text:
             fallback_used = True
-            filename = os.path.basename(filepath)
-            extracted_text = f"Filename: {filename}. File path metadata indicates this is a supporting credit document."
-            self.logger.info(f"Metadata parsing fallback used for {filepath}")
+            extracted_text = f"Filename: {filename}. File metadata indicates this is a supporting credit document."
+            self.logger.info(f"Metadata parsing fallback used for {filename}")
             
         return {
             "text": extracted_text,
@@ -2616,8 +2616,6 @@ class BankGuardOrchestrator:
         ocr_fallback_used = False
         all_extraction_errors = []
         
-        upload_dir = os.path.join(self._get_upload_dir(), application_id) if application_id else ""
-        
         if is_approved_demo:
             # Find the specific demo case default
             matched_key = None
@@ -2646,8 +2644,8 @@ class BankGuardOrchestrator:
                 "extraction_errors": [],
                 "verified_fields": ["Business Name", "Owner Name", "Revenue", "Office Address", "Business Age", "Credit Score"]
             }
-            
-        if not application_id or not os.path.exists(upload_dir):
+
+        if not application_id:
             return {
                 "document_completeness": 0.0,
                 "verified_documents": [],
@@ -2663,87 +2661,130 @@ class BankGuardOrchestrator:
                 "normalized_business_name": norm_biz_name,
                 "normalized_owner_name": norm_owner_name,
                 "ocr_fallback_used": False,
-                "extraction_errors": ["No uploads directory found."],
+                "extraction_errors": ["No application_id provided."],
                 "verified_fields": []
             }
-            
-        # Check files on disk
+
+        # Fetch uploaded document records from the documents collection
+        db_doc_cursor = self.db.documents.find({"application_id": application_id})
+        db_docs = await db_doc_cursor.to_list(length=100)
+        db_doc_map = {d["document_type"]: d for d in db_docs}
+
+        if not db_docs:
+            return {
+                "document_completeness": 0.0,
+                "verified_documents": [],
+                "missing_documents": required_docs,
+                "unsupported_documents": [],
+                "extracted_fields": {},
+                "extraction_confidence": 0.0,
+                "inconsistencies": ["No documents uploaded yet."],
+                "verification_status": "Mismatch Detected",
+                "consistency_score": 0.0,
+                "document_health_score": 0.0,
+                "mismatch_severity": "HIGH",
+                "normalized_business_name": norm_biz_name,
+                "normalized_owner_name": norm_owner_name,
+                "ocr_fallback_used": False,
+                "extraction_errors": ["No document records found in database."],
+                "verified_fields": []
+            }
+
+        # GridFS bucket for file retrieval
+        from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+        bucket = AsyncIOMotorGridFSBucket(self.db)
+
+        # Process each required document using GridFS
         for doc_type in required_docs:
-            sanitized = self._sanitize_doc_type(doc_type)
-            found_file = None
-            try:
-                for f in os.listdir(upload_dir):
-                    base_name, ext = os.path.splitext(f)
-                    if base_name == sanitized:
-                        found_file = f
-                        break
-            except Exception:
-                pass
-                
-            if not found_file:
+            db_doc = db_doc_map.get(doc_type)
+            if not db_doc:
                 missing.append(doc_type)
                 continue
-                
-            filepath = os.path.join(upload_dir, found_file)
-            _, ext = os.path.splitext(found_file)
-            ext = ext.lower().strip('.')
-            
-            if ext not in ['pdf', 'png', 'jpeg', 'jpg']:
-                unsupported.append(f"{doc_type} (Unsupported extension: .{ext})")
+
+            upload_status = db_doc.get("upload_status", "Pending")
+            gridfs_file_id = db_doc.get("gridfs_file_id")
+            file_name = db_doc.get("file_name", "document")
+            _, file_ext = os.path.splitext(file_name)
+            file_ext = file_ext.lower().strip('.')
+
+            if upload_status == "Verified":
+                # Already marked verified (demo case or previous run)
+                verified.append(doc_type)
+                doc_extractions[doc_type] = {
+                    "fields": {},
+                    "text": f"Pre-verified document: {file_name}",
+                    "assessments": {},
+                    "file_name": file_name,
+                    "sha256_hash": ""
+                }
                 continue
-                
+
+            if not gridfs_file_id:
+                missing.append(doc_type)
+                continue
+
+            if file_ext not in ['pdf', 'png', 'jpeg', 'jpg']:
+                unsupported.append(f"{doc_type} (Unsupported extension: .{file_ext})")
+                continue
+
+            # Read file bytes from GridFS
+            file_bytes = b""
             try:
-                size = os.path.getsize(filepath)
-                if size > 10 * 1024 * 1024:
-                    unsupported.append(f"{doc_type} (File size exceeds 10MB)")
-                    continue
-            except Exception:
-                unsupported.append(f"{doc_type} (Could not read file size)")
+                gridfs_stream = await bucket.open_download_stream(gridfs_file_id)
+                file_bytes = await gridfs_stream.read()
+                self.logger.info(f"[DOC-VERIFY] Read {len(file_bytes)} bytes from GridFS for {doc_type}")
+            except Exception as gfs_err:
+                self.logger.error(f"[DOC-VERIFY] GridFS read failed for {doc_type}: {gfs_err}")
+                unsupported.append(f"{doc_type} (GridFS read error: {gfs_err})")
                 continue
-                
+
+            if len(file_bytes) > 10 * 1024 * 1024:
+                unsupported.append(f"{doc_type} (File size exceeds 10MB)")
+                continue
+
+            # Validate file integrity in memory
             corrupted = False
             try:
-                if ext == 'pdf':
-                    reader = PdfReader(filepath)
+                if file_ext == 'pdf':
+                    from pypdf import PdfReader
+                    import io
+                    reader = PdfReader(io.BytesIO(file_bytes))
                     _ = len(reader.pages)
                 else:
-                    with Image.open(filepath) as img:
+                    from PIL import Image
+                    import io
+                    with Image.open(io.BytesIO(file_bytes)) as img:
                         img.verify()
             except Exception:
                 corrupted = True
-                
+
             if corrupted:
                 unsupported.append(f"{doc_type} (File corrupted or unreadable)")
             else:
                 verified.append(doc_type)
-                file_hash = ""
+                import hashlib
+                file_hash = hashlib.sha256(file_bytes).hexdigest()
+
                 try:
-                    with open(filepath, "rb") as f:
-                        file_bytes = f.read()
-                    import hashlib
-                    file_hash = hashlib.sha256(file_bytes).hexdigest()
-                except Exception as hash_err:
-                    self.logger.error(f"Error computing file hash: {hash_err}")
-                try:
-                    parse_result = self._extract_text_from_file(filepath)
+                    parse_result = self._extract_text_from_file(file_bytes, file_ext, file_name)
                     extracted_text = parse_result["text"]
                     if parse_result.get("ocr_fallback_used"):
                         ocr_fallback_used = True
                     if parse_result.get("extraction_errors"):
                         all_extraction_errors.extend(parse_result["extraction_errors"])
-                        
+
                     if parse_result.get("method") == "gemini":
                         fields = parse_result.get("extracted_fields", {})
                         assessments = parse_result.get("assessments", {})
                     else:
                         fields = self._parse_extracted_text(extracted_text, doc_type)
                         assessments = {}
-                        
+
                     doc_extractions[doc_type] = {
                         "fields": fields,
                         "text": extracted_text,
                         "assessments": assessments,
-                        "file_name": found_file,
+                        "file_name": file_name,
                         "sha256_hash": file_hash
                     }
                 except Exception as e:

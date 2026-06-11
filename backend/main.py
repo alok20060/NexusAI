@@ -284,8 +284,9 @@ async def upload_document(
     file: UploadFile = File(...)
 ):
     """
-    Accepts document uploads, validates file type and size, saves to disk,
-    and logs metadata to MongoDB.
+    Accepts document uploads, validates file type and size, stores the file
+    in MongoDB GridFS (no local disk writes — Vercel-compatible), and logs
+    metadata to the documents collection.
     """
     logger.info(f"Uploading {document_type} for application {application_id}")
     try:
@@ -294,62 +295,106 @@ async def upload_document(
         app_profile = await orchestrator.db.applicant_profiles.find_one({"application_id": application_id})
         if not app_profile:
             raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
-            
+
         # Validate file extension
-        _, ext = os.path.splitext(file.filename)
+        _, ext = os.path.splitext(file.filename or "")
         ext = ext.lower().strip('.')
         if ext not in ['pdf', 'png', 'jpeg', 'jpg']:
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: .{ext}. Allowed: PDF, PNG, JPEG, JPG")
-            
-        # Validate size
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type: .{ext}. Allowed: PDF, PNG, JPEG, JPG"
+            )
+
+        # Read all bytes — no disk writes
         contents = await file.read()
         size = len(contents)
+        logger.info(f"[upload-document] Received {size} bytes for {document_type} ({application_id})")
+
         if size > 10 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
-            
-        # Save file to uploads/{application_id}/
-        upload_dir = os.path.join(orchestrator._get_upload_dir(), application_id)
-        os.makedirs(upload_dir, exist_ok=True)
-        
+
+        # Store in GridFS
         sanitized_doc_type = orchestrator._sanitize_doc_type(document_type)
-        filename = f"{sanitized_doc_type}.{ext}"
-        filepath = os.path.join(upload_dir, filename)
-        
-        with open(filepath, "wb") as f:
-            f.write(contents)
-            
-        # Update metadata in MongoDB
+        gridfs_filename = f"{application_id}_{sanitized_doc_type}.{ext}"
+
+        try:
+            import motor.motor_asyncio as motor_asyncio
+            import gridfs as sync_gridfs
+            from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+
+            bucket = AsyncIOMotorGridFSBucket(orchestrator.db)
+
+            # Delete any existing file for this doc slot before re-upload
+            try:
+                existing = await orchestrator.db.documents.find_one(
+                    {"application_id": application_id, "document_type": document_type}
+                )
+                if existing and existing.get("gridfs_file_id"):
+                    try:
+                        await bucket.delete(existing["gridfs_file_id"])
+                        logger.info(f"[upload-document] Deleted old GridFS file for {document_type}")
+                    except Exception as del_err:
+                        logger.warning(f"[upload-document] Could not delete old GridFS file: {del_err}")
+            except Exception as lookup_err:
+                logger.warning(f"[upload-document] Could not check for existing file: {lookup_err}")
+
+            # Upload new file to GridFS
+            content_type = file.content_type or ("application/pdf" if ext == "pdf" else f"image/{ext}")
+            gridfs_id = await bucket.upload_from_stream(
+                gridfs_filename,
+                contents,
+                metadata={
+                    "application_id": application_id,
+                    "document_type": document_type,
+                    "content_type": content_type,
+                    "upload_timestamp": datetime.now().isoformat()
+                }
+            )
+            logger.info(f"[upload-document] Stored {gridfs_filename} in GridFS with id={gridfs_id}")
+        except Exception as gfs_err:
+            logger.error(f"[upload-document] GridFS upload failed: {gfs_err}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"GridFS storage error: {str(gfs_err)}")
+
+        # Update metadata in MongoDB documents collection
         await orchestrator.db.documents.update_one(
             {"application_id": application_id, "document_type": document_type},
             {"$set": {
                 "upload_status": "Uploaded",
-                "file_name": filename,
-                "storage_path": filepath,
+                "file_name": gridfs_filename,
+                "gridfs_file_id": gridfs_id,
+                "content_type": content_type,
+                "file_size_bytes": size,
+                "storage_path": "gridfs",   # legacy field kept for schema compatibility
                 "uploaded_at": datetime.now().isoformat()
             }},
             upsert=True
         )
-        
-        # Update Application Intake timeline stage to Completed if all documents uploaded
+
+        # Update timeline progress
         required_docs = app_profile.get("required_documents", [])
         cursor = orchestrator.db.documents.find({"application_id": application_id})
         uploaded_docs = await cursor.to_list(length=100)
-        uploaded_types = [d["document_type"] for d in uploaded_docs if d["upload_status"] == "Uploaded"]
-        
+        uploaded_types = [
+            d["document_type"] for d in uploaded_docs
+            if d.get("upload_status") in ("Uploaded", "Verified")
+        ]
+
         all_uploaded = all(doc in uploaded_types for doc in required_docs)
         if all_uploaded:
             await orchestrator._update_timeline(application_id, "Application Intake", "Completed")
         else:
             await orchestrator._update_timeline(application_id, "Application Intake", "In Progress")
-            
+
         return {
             "status": "success",
             "document_type": document_type,
-            "file_name": filename
+            "file_name": gridfs_filename,
+            "gridfs_id": str(gridfs_id)
         }
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"[upload-document] Unexpected error: {e}", exc_info=True)
         return _mongo_error_json("/upload-document", e)
 
 @app.get("/application-documents/{application_id}")
