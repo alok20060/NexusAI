@@ -4,6 +4,7 @@ import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from typing import Any
 
 # Load .env file for local development (no-op in production)
@@ -39,6 +40,11 @@ app.add_middleware(
 
 # Instantiate the Orchestrator
 orchestrator = BankGuardOrchestrator()
+
+# Mount Vite-built static assets (/assets/) for local and Vercel serving
+_assets_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "assets")
+if os.path.exists(_assets_dir):
+    app.mount("/assets", StaticFiles(directory=_assets_dir), name="static_assets")
 
 
 @app.on_event("startup")
