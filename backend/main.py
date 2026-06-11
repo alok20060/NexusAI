@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import schemas and orchestrator
 from backend.schemas import LoanAnalysisInput, LoanAnalysisResponse, InitializeApplicationInput, InitializeApplicationResponse
 from backend.orchestrator import BankGuardOrchestrator
-from backend.database import verify_atlas_connection, DB_NAME, MONGO_URI
+from backend.database import verify_atlas_connection, DB_NAME, MONGO_URI, _log_connection_error
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -74,7 +74,7 @@ def _require_db():
 
 def _mongo_error_json(endpoint: str, error: Exception, status_code: int = 503) -> JSONResponse:
     """Return a structured JSON error instead of an unhandled 500 crash."""
-    logger.error(f"MongoDB error on {endpoint}: {error}", exc_info=True)
+    _log_connection_error(error, endpoint)
     return JSONResponse(
         status_code=status_code,
         content={

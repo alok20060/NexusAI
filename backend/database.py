@@ -6,7 +6,14 @@ Set MONGO_URI in environment variables (Vercel: Project → Settings → Environ
 """
 import os
 import logging
+import certifi
 from pymongo import MongoClient
+from pymongo.errors import (
+    ServerSelectionTimeoutError,
+    ConfigurationError,
+    OperationFailure,
+    ConnectionFailure,
+)
 from motor.motor_asyncio import AsyncIOMotorClient
 
 logger = logging.getLogger("NexusAI-BankGuardDB")
@@ -14,13 +21,7 @@ logger = logging.getLogger("NexusAI-BankGuardDB")
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("MONGO_DB_NAME", "BankGuard")
 
-_CLIENT_KWARGS = {
-    "serverSelectionTimeoutMS": 10000,
-    "connectTimeoutMS": 10000,
-    "socketTimeoutMS": 30000,
-    "tls": True,
-    "tlsAllowInvalidCertificates": False,
-}
+# ── MongoDB Client Creation — certifi CA bundle for Vercel SSL compatibility ──
 
 REQUIRED_COLLECTIONS = [
     "applications",
@@ -38,6 +39,45 @@ REQUIRED_COLLECTIONS = [
 ]
 
 
+def _log_connection_error(error: Exception, context: str = ""):
+    """Log detailed diagnostic info for common Atlas connection failures."""
+    err_str = str(error).lower()
+    prefix = f"[{context}] " if context else ""
+
+    if "ssl" in err_str or "tls" in err_str or "handshake" in err_str:
+        logger.error(
+            f"{prefix}SSL/TLS handshake failed. "
+            "Ensure certifi is installed and tlsCAFile=certifi.where() is set. "
+            f"Detail: {error}"
+        )
+    elif "authentication" in err_str or "auth" in err_str:
+        logger.error(
+            f"{prefix}Authentication failed. "
+            "Check MONGO_URI username/password and Atlas user permissions. "
+            f"Detail: {error}"
+        )
+    elif "dns" in err_str or "nodename" in err_str or "getaddrinfo" in err_str:
+        logger.error(
+            f"{prefix}DNS resolution failed. "
+            "Check cluster hostname in MONGO_URI and network connectivity. "
+            f"Detail: {error}"
+        )
+    elif "timeout" in err_str or "timed out" in err_str:
+        logger.error(
+            f"{prefix}Connection timed out. "
+            "Check Atlas Network Access IP whitelist (allow 0.0.0.0/0 for Vercel). "
+            f"Detail: {error}"
+        )
+    elif isinstance(error, OperationFailure) or "authorized" in err_str or "collection" in err_str or "permission" in err_str:
+        logger.error(
+            f"{prefix}Collection access or operation failed. "
+            "Verify that the database user has correct readWrite permissions for this collection. "
+            f"Detail: {error}"
+        )
+    else:
+        logger.error(f"{prefix}MongoDB error: {error}")
+
+
 def get_sync_client() -> MongoClient:
     """Return a synchronous MongoClient connected to Atlas."""
     if not MONGO_URI:
@@ -45,11 +85,28 @@ def get_sync_client() -> MongoClient:
             "MONGO_URI environment variable is not set. "
             "Set it to your MongoDB Atlas connection string."
         )
-    return MongoClient(MONGO_URI, **_CLIENT_KWARGS)
+    try:
+        client = MongoClient(
+            MONGO_URI,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=30000,
+            socketTimeoutMS=30000
+        )
+        try:
+            client.admin.command("ping")
+            print("Atlas connection successful")
+        except Exception as e:
+            print("Atlas connection failed:", e)
+        return client
+    except Exception as e:
+        _log_connection_error(e, "get_sync_client")
+        raise
 
 
 def get_sync_db():
-    """Return the bankguard database via a synchronous client."""
+    """Return the BankGuard database via a synchronous client."""
     client = get_sync_client()
     return client[DB_NAME]
 
@@ -61,7 +118,19 @@ def create_async_client() -> AsyncIOMotorClient:
             "MONGO_URI environment variable is not set. "
             "Set it to your MongoDB Atlas connection string."
         )
-    return AsyncIOMotorClient(MONGO_URI, **_CLIENT_KWARGS)
+    try:
+        client = AsyncIOMotorClient(
+            MONGO_URI,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=30000,
+            socketTimeoutMS=30000
+        )
+        return client
+    except Exception as e:
+        _log_connection_error(e, "create_async_client")
+        raise
 
 
 async def verify_atlas_connection(db_client: AsyncIOMotorClient) -> dict:
@@ -86,5 +155,5 @@ async def verify_atlas_connection(db_client: AsyncIOMotorClient) -> dict:
             "missing_required": missing,
         }
     except Exception as e:
-        logger.error(f"MongoDB error: {e}")
+        _log_connection_error(e, "verify_atlas_connection")
         return {"connected": False, "error": str(e)}

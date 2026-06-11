@@ -1,8 +1,9 @@
 fastapi==0.136.3
 uvicorn==0.49.0
 pydantic==2.13.4
+pymongo[srv]
 motor==3.7.1
-pymongo==4.17.0
+certifi
 google-adk==2.1.0
 google-genai==1.75.0
 mcp==1.27.2
@@ -11,4 +12,3 @@ python-dotenv==1.0.1
 pdfplumber==0.11.4
 PyPDF2==3.0.1
 pytesseract==0.3.13
-
